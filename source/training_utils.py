@@ -5,6 +5,9 @@ import torch.nn.functional as F
 import torch
 import tqdm
 from dataset import EMGDataset
+from task import EMGTask
+import json
+import os
 
 def sample_tasks(task_distribution: list, 
                  n_tasks: int
@@ -79,3 +82,27 @@ def maml(meta_model,
             logger[task.task_id].append(task_training_log)
         meta_optimizer.step()  # Line 10 in the pseudocode
     return logger
+
+def _safe_json_load(filepath):
+    try:
+        with open(filepath, 'r') as json_file:
+            task_collection = json.load(json_file)
+            return(task_collection)
+    except FileNotFoundError:
+        print(f"File {filepath} not found. No task collection loaded.")
+    except json.JSONDecodeError:
+        print(f"Error decoding JSON in file {filepath}. No task collection loaded.")
+
+def load_in_task_space(filepath):
+    # Load task collection from a JSON file
+    tc_list = _safe_json_load(filepath)
+    root_dir = '/Users/plarotta/software/meta-emg/data/collected_data'
+
+    task_collection = [
+        EMGTask(os.path.join(root_dir, d['session']), d['condition'], train_frac=0.25) 
+        for d in tc_list if 'Augmen' not in d['session']]
+
+    return(task_collection)
+
+if __name__ == '__main__':
+    load_in_task_space('/Users/plarotta/software/meta-emg/data/task_spaces/pedro_ts1.json')

@@ -20,7 +20,8 @@ class DataCollectorGUI:
         self.current_session = None
         self.current_csv_files = None
 
-        self.all_sessions = [session for session in os.listdir(self.root_dir) if os.path.isdir(os.path.join(self.root_dir, session))]
+        self.all_sessions = [session for session in os.listdir(self.root_dir) 
+                             if os.path.isdir(os.path.join(self.root_dir, session)) and 'chatemg' not in session]
         self.all_index = 0
     
 
@@ -89,7 +90,7 @@ class DataCollectorGUI:
 
         # Display the data (you can customize this part based on your needs)
         
-        [self.ax.plot(df['time_elapsed'], df['emg'+str(idx)]) for idx in range(8)]
+        [self.ax.plot(df['time_elapsed'], df[f'emg{idx}']) for idx in range(8)]
         self.ax.plot(df['time_elapsed'], df['gt']*.5*max(df['emg3']))
         self.ax.set_title("EMG Recording")
         self.ax.set_xlabel("Time")
@@ -98,7 +99,7 @@ class DataCollectorGUI:
         # Update the info label with the current session, CSV file names, and index information
         session_name = os.path.basename(self.current_session)
         file_name = os.path.basename(csv_file)
-        self.info_label.config(text=f"Session: {session_name}\nFile: {file_name}\nIndex: {self.session_index + 1}/{len(self.current_csv_files)}")
+        self.info_label.config(text=f"Session: {session_name}\nFile: {file_name}\nFile index: {self.session_index + 1}/{len(self.current_csv_files)}\nSession index: {self.all_index}/{len(self.all_sessions)}")
 
         # Redraw the canvas
         self.canvas_frame.destroy()
@@ -116,17 +117,12 @@ class DataCollectorGUI:
             csv_filename = os.path.basename(self.current_csv_files[self.session_index])
             self.task_collection.append({'session': os.path.basename(self.current_session), 
                                          'condition': re.search(r'_(.*?)\.csv', csv_filename).group(1)})
-            
-            print("task collection updated... here's what it looks like now:", self.task_collection)
-
             # Load the next CSV file within the current session
             self.load_next_csv_file()
 
     def remove_last_task(self):
         if self.task_collection:
             removed_task = self.task_collection.pop()
-            print(f"Removed Task: {removed_task}")
-
             self.load_next_csv_file()
 
     def get_next_session(self):
