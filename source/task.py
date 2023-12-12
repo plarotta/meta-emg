@@ -1,4 +1,4 @@
-from dataset import EMGDataset
+from source.dataset import EMGDataset
 from torch.utils.data import DataLoader
 
 class EMGTask():
