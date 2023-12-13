@@ -57,6 +57,8 @@ def main(cfg: DictConfig):
         with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
             pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+
+
     print(f"SUCCESSFULLY COMPLETED MAML RUN.")
     return(maml_logs)
 

@@ -173,8 +173,9 @@ def _safe_json_load(filepath):
 def load_in_task_collection(filepath):
     # Load task collection from a JSON file
     tc_list = _safe_json_load(filepath)
-    root_dir = '/Users/plarotta/software/meta-emg/data/collected_data'
-
+    curr_wd = os.getcwd()
+    assert curr_wd[-8:] == 'meta-emg', "train.py must be run from the root of the meta-emg directory"
+    root_dir = os.path.join(curr_wd,'data','collected_data')
     task_collection = [
         EMGTask(os.path.join(root_dir, d['session']), d['condition'], train_frac=0.25) 
         for d in tc_list if 'Augmen' not in d['session']]

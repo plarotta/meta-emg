@@ -12,7 +12,11 @@ class DataCollectorGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Data Collector")
-        self.root_dir = '/Users/plarotta/software/meta-emg/data/collected_data'
+
+        _curr_wd = os.getcwd()
+        assert _curr_wd[-8:] == 'meta-emg', "GUI must be run from the root of the meta-emg directory"
+
+        self.root_dir = os.path.join(_curr_wd,'data','collected_data')
 
         self.task_collection = []
 
