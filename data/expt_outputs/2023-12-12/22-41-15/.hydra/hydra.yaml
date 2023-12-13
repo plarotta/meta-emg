@@ -140,7 +140,7 @@ hydra:
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /Users/plarotta/software/meta-emg/data/expt_outputs/2023-12-12/20-45-11
+    output_dir: /Users/plarotta/software/meta-emg/data/expt_outputs/2023-12-12/22-41-15
     choices:
       hydra/env: default
       hydra/callbacks: null

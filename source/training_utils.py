@@ -80,7 +80,6 @@ def _fine_tune_meta(model: nn.Module,
         for _ in range(inner_training_steps):
             running_loss = 0.0
 
-
             for i, (x_batch, y_batch) in enumerate(task.trainloader):
                 inner_optimizer.zero_grad()
                 loss = loss_fct(model_copy(x_batch.to(device)), 
@@ -118,13 +117,15 @@ def maml(meta_model: nn.Module,
          inner_training_steps: int, 
          meta_training_steps: int, 
          inner_lr: float,
-         n_tasks=3, 
-         device='cpu') -> dict:
+         n_tasks=3,
+         model_save_dir=None) -> dict:
     """
     Algorithm from https://arxiv.org/pdf/1703.03400v3.pdf (MAML for Few-Shot Supervised Learning)
     """
+    # Check if GPU is available
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(device)
     
-    np.random.seed(0)
     logger = {'train':{},'val':{}}
     for t in val_tasks:
         logger['val'][t.task_id] = [] 
@@ -146,10 +147,16 @@ def maml(meta_model: nn.Module,
             logger['train'][task.task_id].append(task_training_log)
         meta_optimizer.step()  # Line 10 in the pseudocode
 
-
         [logger['val'][t.task_id].append(
             _fine_tune_meta(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
             for t in val_tasks]
+        
+        if model_save_dir:
+            avg_val_loss = np.mean([logger['val'][t.task_id][-1]['val_loss'] for t in val_tasks])
+            model_folder_name = f'epoch_{epoch:04d}_loss_{avg_val_loss:.4f}'
+            os.makedirs(os.path.join(model_save_dir, model_folder_name))
+            torch.save(meta_model.state_dict(), 
+                       os.path.join(model_save_dir, model_folder_name, 'model_state_dict.pth'))
     
     return logger
 
@@ -175,16 +182,11 @@ def load_in_task_collection(filepath):
     return(task_collection)
 
 def get_save_dirs(outpit_root_dir: str) -> list:
-    timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
-    expt_dir = os.path.join(outpit_root_dir, timestr)
-    model_save_dir = os.path.join(expt_dir, 'models')
-    res_save_dir = os.path.join(expt_dir, 'logs')
-    conf_save_dir = os.path.join(expt_dir, 'conf')
+    model_save_dir = os.path.join(outpit_root_dir, 'models')
+    res_save_dir = os.path.join(outpit_root_dir, 'results')
     
-    os.makedirs(expt_dir)
     os.makedirs(model_save_dir)
     os.makedirs(res_save_dir)
-    os.makedirs(conf_save_dir)
 
-    return(model_save_dir, res_save_dir, conf_save_dir)
+    return(model_save_dir, res_save_dir)
 

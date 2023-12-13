@@ -6,7 +6,7 @@ test:
     n_val_tasks: 3
     n_train_tasks: 3
     task_collection_json: '/Users/plarotta/software/meta-emg/data/task_collections/pedro_ts1.json'
-    out_root: None
+    save: True
 
 hydra:
     run:

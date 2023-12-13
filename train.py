@@ -6,6 +6,9 @@ import numpy.random
 from torch import manual_seed
 import hydra
 from omegaconf import DictConfig, OmegaConf
+import pickle
+import os
+
 
 
 @hydra.main(version_base=None, config_path="data/conf", config_name="config")
@@ -24,11 +27,11 @@ def main(cfg: DictConfig):
     N_VAL_TASKS = cfg.test.n_val_tasks
     N_TRAIN_TASKS = cfg.test.n_train_tasks
     TC_PATH = cfg.test.task_collection_json
-    OUT_ROOT = cfg.test.out_root
+    OUT_ROOT = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir if cfg.test.save else None
 
     # ONLY SAVE CHECKPOINTS IF THE OUT_ROOT IS GIVEN
     if OUT_ROOT:
-        MODEL_DIR, RES_DIR, CONF_DIR = get_save_dirs(OUT_ROOT)
+        MODEL_DIR, RES_DIR = get_save_dirs(OUT_ROOT)
 
     # GET TEST-VAL SPLIT 
     task_colxn = load_in_task_collection(TC_PATH)
@@ -39,6 +42,7 @@ def main(cfg: DictConfig):
     meta_optimizer = optim.Adam(meta_model.parameters(), lr=OUTER_LR)
 
     # RUN MAML
+    print("SETUP COMPLETE. BEGINNING MAML...")
     maml_logs = maml(meta_model, 
                      train_colxn,
                      val_clxn,
@@ -46,8 +50,14 @@ def main(cfg: DictConfig):
                      INNER_STEPS, 
                      META_STEPS, 
                      INNER_LR, 
-                     n_tasks=N_TRAIN_TASKS)
+                     n_tasks=N_TRAIN_TASKS,
+                     model_save_dir=MODEL_DIR)
     
+    if OUT_ROOT:
+        with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
+            pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    print(f"SUCCESSFULLY COMPLETED MAML RUN.")
     return(maml_logs)
 
 if __name__ == '__main__':
