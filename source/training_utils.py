@@ -9,9 +9,9 @@ from source.dataset import EMGDataset
 from source.task import EMGTask
 import json
 import os
-import time
 import copy
 import warnings
+from torch.utils.data import DataLoader
 
 # hide warning from loss.backward(retain_graph=True)
 warnings.filterwarnings("ignore", category=UserWarning, module="torch.autograd")
@@ -28,12 +28,14 @@ def sample_tasks(task_distribution: list,
     return(out)
 
 
-def _fine_tune_meta(model: nn.Module, 
+def _fine_tune_model(model: nn.Module, 
                    task: EMGTask, 
                    inner_training_steps: int, 
                    inner_lr: float, 
                    device='cpu', 
-                   store_grads=False
+                   store_grads=False,
+                   wandb=None,
+                   baseline=0
                    ) -> dict:
     
     if store_grads:
@@ -53,6 +55,8 @@ def _fine_tune_meta(model: nn.Module,
                     running_loss += loss.item()
                 running_loss = running_loss/(i+1)
                 training_losses.append(running_loss)
+                if wandb:
+                    wandb.log({'loop':'fine-tuning','type': 'training', 'task_id': task.task_id, 't_loss': running_loss})
             
             val_loss = 0.0
             correct = 0
@@ -69,10 +73,12 @@ def _fine_tune_meta(model: nn.Module,
 
         val_loss = val_loss/(j+1)
         val_accuracy = correct/total_items
+        if wandb:
+            wandb.log({'loop':'fine-tuning','type': 'validation', 'task_id': task.task_id, 'v_loss': val_loss, 'v_accuracy': val_accuracy})
 
     else:
         model_copy = copy.deepcopy(model)
-        inner_optimizer = optim.SGD(model_copy.parameters(), lr=inner_lr)
+        inner_optimizer = optim.Adam(model_copy.parameters(), lr=inner_lr)
         loss_fct = nn.CrossEntropyLoss()
         training_losses = []
 
@@ -90,6 +96,12 @@ def _fine_tune_meta(model: nn.Module,
                 
             running_loss = running_loss/(i+1)
             training_losses.append(running_loss)
+            if wandb:
+                wandb.log({'loop':'meta validation',
+                           'type': 'training', 
+                           'task_id': task.task_id, 
+                           't_loss': running_loss,
+                           'baseline': baseline})
         
         val_loss = 0.0
         correct = 0
@@ -106,6 +118,14 @@ def _fine_tune_meta(model: nn.Module,
 
         val_loss = val_loss/(j+1)
         val_accuracy = correct/total_items
+        if wandb:
+            wandb.log({'loop':'meta validation',
+                       'type': 'validation', 
+                       'task_id': task.task_id, 
+                       'v_loss': val_loss, 
+                       'v_accuracy': val_accuracy,
+                       'baseline':baseline})
+
         print(f'task: {task.task_id}, val loss: {val_loss}, val accuracy: {val_accuracy}')
     
     return {'training_losses': training_losses, 'val_loss': val_loss, 'val_accuracy': val_accuracy}
@@ -118,7 +138,8 @@ def maml(meta_model: nn.Module,
          meta_training_steps: int, 
          inner_lr: float,
          n_tasks=3,
-         model_save_dir=None) -> dict:
+         model_save_dir=None,
+         wandb=None) -> dict:
     """
     Algorithm from https://arxiv.org/pdf/1703.03400v3.pdf (MAML for Few-Shot Supervised Learning)
     """
@@ -138,7 +159,7 @@ def maml(meta_model: nn.Module,
             if task.task_id not in logger['train']:
                 logger['train'][task.task_id] = []
                 logger['val'][task.task_id] = []
-            task_training_log = _fine_tune_meta(meta_model,
+            task_training_log = _fine_tune_model(meta_model,
                                                task,
                                                inner_training_steps,
                                                inner_lr,
@@ -148,7 +169,7 @@ def maml(meta_model: nn.Module,
         meta_optimizer.step()  # Line 10 in the pseudocode
 
         [logger['val'][t.task_id].append(
-            _fine_tune_meta(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
+            _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
             for t in val_tasks]
         
         if model_save_dir:
@@ -190,4 +211,86 @@ def get_save_dirs(outpit_root_dir: str) -> list:
     os.makedirs(res_save_dir)
 
     return(model_save_dir, res_save_dir)
+
+def get_baseline1(blank_model: nn.Module, val_tasks: list, inner_steps: int, inner_lr: float, wandb=None):
+    logger = {'train':{},'val':{}}
+    for task in val_tasks:
+        logger['train'][task.task_id] = []
+        logger['val'][task.task_id] = []
+    
+    print('\nBASELINE 1: no meta training, no pre-training\n')
+    [logger['val'][t.task_id].append(
+            _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=1)) 
+            for t in val_tasks]
+    print('\n')
+    return(logger)
+
+
+def get_baseline2(blank_model: nn.Module, 
+                  train_tasks: list[EMGTask], 
+                  val_tasks: list, 
+                  inner_steps: int, 
+                  inner_lr: float, 
+                  wandb=None,
+                  device='cpu'):
+    # generate big training dataset
+    big_X = None
+    big_Y = None
+    for task in train_tasks:
+        d = EMGDataset(task.session_path, task.condition, frac_data=1)
+        
+        if big_X is None:
+            big_X = np.copy(d.emg_signals)
+            big_Y = np.copy(d.labels)
+            continue
+        big_X = np.concatenate((big_X, d.emg_signals))
+        big_Y = np.concatenate((big_Y, d.labels))
+    
+    mega_ds = EMGDataset(task.session_path, task.condition)
+    mega_ds.emg_signals = big_X
+    mega_ds.labels = big_Y
+
+    trainloader = DataLoader(mega_ds, batch_size=32)
+
+    optimizer = optim.Adam(blank_model.parameters(), lr=1e-4)
+
+    criterion = nn.CrossEntropyLoss()
+    print("Pre-training baseline 2")
+    for epoch in tqdm(range(30)):
+        running_loss = 0.0
+        correct = 0
+        tot = 0
+        for i, (x_batch, y_batch) in enumerate(trainloader):
+            optimizer.zero_grad()
+            preds = blank_model(x_batch.to(device))
+            loss = criterion(preds, 
+                             y_batch.type(torch.LongTensor).to(device))
+            running_loss += loss.item()
+            loss.backward()
+            optimizer.step()
+            correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch).item()
+            tot += len(y_batch)
+        running_loss = running_loss/(i+1)
+        accuracy = correct/tot
+        # print(f'epoch: {epoch} | training loss: {running_loss} | training accuracy: {accuracy}')
+
+
+    logger = {'train':{},'val':{}}
+    for task in val_tasks:
+        logger['train'][task.task_id] = []
+        logger['val'][task.task_id] = []
+
+    print('\nBASELINE 2: no meta training, pre-trained on the entire train task collection\n')
+    [logger['val'][t.task_id].append(
+            _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=2)) 
+            for t in val_tasks]
+    
+    return(logger)
+
+
+
+
+
+
+
 

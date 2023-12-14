@@ -1,6 +1,6 @@
 from source.models import BasicCNN
 import torch.optim as optim
-from source.training_utils import maml, load_in_task_collection, get_save_dirs
+from source.training_utils import maml, load_in_task_collection, get_save_dirs, get_baseline1, get_baseline2
 from sklearn.model_selection import train_test_split
 import numpy.random
 from torch import manual_seed
@@ -8,6 +8,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import pickle
 import os
+import wandb
 
 
 
@@ -28,10 +29,15 @@ def main(cfg: DictConfig):
     N_TRAIN_TASKS = cfg.test.n_train_tasks
     TC_PATH = cfg.test.task_collection_json
     OUT_ROOT = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir if cfg.test.save else None
+    WANDB = cfg.test.wandb
+
+    wandb_logger = wandb.init(name='both baselines, 150 steps, double adam') if cfg.test.wandb else None
 
     # ONLY SAVE CHECKPOINTS IF THE OUT_ROOT IS GIVEN
     if OUT_ROOT:
         MODEL_DIR, RES_DIR = get_save_dirs(OUT_ROOT)
+    else:
+        MODEL_DIR, RES_DIR = None, None
 
     # GET TEST-VAL SPLIT 
     task_colxn = load_in_task_collection(TC_PATH)
@@ -41,7 +47,7 @@ def main(cfg: DictConfig):
     meta_model = BasicCNN()
     meta_optimizer = optim.Adam(meta_model.parameters(), lr=OUTER_LR)
 
-    # RUN MAML
+    # # # RUN MAML
     print("SETUP COMPLETE. BEGINNING MAML...")
     maml_logs = maml(meta_model, 
                      train_colxn,
@@ -52,12 +58,15 @@ def main(cfg: DictConfig):
                      INNER_LR, 
                      n_tasks=N_TRAIN_TASKS,
                      model_save_dir=MODEL_DIR)
+
+    base1_logs = get_baseline1(BasicCNN(), val_clxn, INNER_STEPS, INNER_LR, wandb_logger)
+    bs2 = BasicCNN()
+
+    base2_logs = get_baseline2(bs2, train_colxn, val_clxn, INNER_STEPS, INNER_LR)
     
     if OUT_ROOT:
         with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
             pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-
 
     print(f"SUCCESSFULLY COMPLETED MAML RUN.")
     return(maml_logs)
