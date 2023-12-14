@@ -9,6 +9,9 @@ from omegaconf import DictConfig, OmegaConf
 import pickle
 import os
 import wandb
+from matplotlib import pyplot as plt
+import numpy as np
+import pandas as pd
 
 
 
@@ -31,7 +34,7 @@ def main(cfg: DictConfig):
     OUT_ROOT = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir if cfg.test.save else None
     WANDB = cfg.test.wandb
 
-    wandb_logger = wandb.init(name='both baselines, 150 steps, double adam') if cfg.test.wandb else None
+    wandb_logger = wandb.init(name='both baselines, 150 steps, true double adam, 1e-4 OLR') if WANDB else None
 
     # ONLY SAVE CHECKPOINTS IF THE OUT_ROOT IS GIVEN
     if OUT_ROOT:
@@ -47,7 +50,7 @@ def main(cfg: DictConfig):
     meta_model = BasicCNN()
     meta_optimizer = optim.Adam(meta_model.parameters(), lr=OUTER_LR)
 
-    # # # RUN MAML
+    # # # # RUN MAML
     print("SETUP COMPLETE. BEGINNING MAML...")
     maml_logs = maml(meta_model, 
                      train_colxn,
@@ -58,18 +61,80 @@ def main(cfg: DictConfig):
                      INNER_LR, 
                      n_tasks=N_TRAIN_TASKS,
                      model_save_dir=MODEL_DIR)
-
-    base1_logs = get_baseline1(BasicCNN(), val_clxn, INNER_STEPS, INNER_LR, wandb_logger)
-    bs2 = BasicCNN()
-
-    base2_logs = get_baseline2(bs2, train_colxn, val_clxn, INNER_STEPS, INNER_LR)
     
+
+
+    base2_logs = get_baseline2(BasicCNN(), train_colxn, val_clxn, INNER_STEPS, INNER_LR) # pre training
+    base1_logs = get_baseline1(BasicCNN(), val_clxn, INNER_STEPS, INNER_LR, wandb_logger) # blank
+
+    meta_accs = []
+    meta_labs = []
+    for t in maml_logs['val']:
+        meta_accs.append(maml_logs['val'][t][-1]['val_accuracy'])
+        meta_labs.append(t)
+
+    
+    b1_accs = []
+    b1_labs = []
+    for t in base1_logs['val']:
+        b1_accs.append(base1_logs['val'][t][-1]['val_accuracy'])
+        b1_labs.append(t)
+
+    b2_accs = []
+    b2_labs = []
+    for t in base2_logs['val']:
+        b2_accs.append(base2_logs['val'][t][-1]['val_accuracy'])
+        b2_labs.append(t)
+
+    assert b2_labs == b1_labs, 'task ordering issue in baseline plots'
+    assert meta_labs == b2_labs, 'task ordering issue in baseline plots'
+
+    # Calculate averages for each model
+    model1_avg = np.mean(b1_accs)
+    model2_avg = np.mean(b2_accs)
+    model3_avg = np.mean(meta_accs)
+
+    res_table = pd.DataFrame([[*b1_accs,model1_avg],[*b2_accs,model2_avg],[*meta_accs,model3_avg]], 
+                       columns=[*meta_labs,'avg'],
+                       index=pd.Index(['Baseline 1: no pre-training, no meta training','M-EMG','Baseline 2: pre-trained model']))
+    print(res_table)
+
+    # Create a figure for the table
+    fig, ax = plt.subplots(1, figsize=(20, 10))
+
+    
+    # Number of tasks
+    num_tasks = len(meta_labs)
+
+    # Set the bar width
+    bar_width = 0.30
+
+    # Set the positions of the bars on the x-axis
+    r1 = np.arange(num_tasks)
+    r2 = [x + bar_width for x in r1]
+    r3 = [x + bar_width for x in r2]
+
+    # Plotting the grouped bar chart
+    ax.bar(r1, b1_accs, width=bar_width, label='Baseline 1: no pre-training, no meta training')
+    ax.bar(r2, b2_accs, width=bar_width, label='Baseline 2: pre-trained model')
+    ax.bar(r3, meta_accs, width=bar_width, label='M-EMG')
+
+    # Adding labels and title
+    ax.set_xlabel('Tasks')
+    ax.set_ylabel('Accuracy')
+    ax.set_title('Model Performances on Different Tasks')
+    ax.set_xticks([r + bar_width for r in range(num_tasks)], meta_labs)
+    ax.set_xticklabels(meta_labs, rotation=45, ha='right')
+    ax.legend()
+    plt.show()
+
     if OUT_ROOT:
         with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
             pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        res_table.to_csv(os.path.join(RES_DIR,'res_table.csv'))
 
     print(f"SUCCESSFULLY COMPLETED MAML RUN.")
-    return(maml_logs)
+    # return(maml_logs)
 
 if __name__ == '__main__':
     main()

@@ -1,0 +1,10 @@
+test:
+  inner_lr: 0.0001
+  outer_lr: 0.001
+  meta_steps: 3
+  inner_steps: 20
+  n_val_tasks: 10
+  n_train_tasks: 4
+  task_collection_json: /Users/plarotta/software/meta-emg/data/task_collections/pedro_ts1.json
+  save: false
+  wandb: false

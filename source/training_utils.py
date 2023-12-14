@@ -39,7 +39,7 @@ def _fine_tune_model(model: nn.Module,
                    ) -> dict:
     
     if store_grads:
-        inner_optimizer = optim.SGD(model.parameters(), lr=inner_lr)
+        inner_optimizer = optim.Adam(model.parameters(), lr=inner_lr)
         # this wrapper is what allows us to store the inner loop gradients for the meta update
         with higher.innerloop_ctx(model, inner_optimizer, copy_initial_weights=False) as (fmodel, diffopt):
             training_losses = []
@@ -158,7 +158,6 @@ def maml(meta_model: nn.Module,
         for task in tasks:
             if task.task_id not in logger['train']:
                 logger['train'][task.task_id] = []
-                logger['val'][task.task_id] = []
             task_training_log = _fine_tune_model(meta_model,
                                                task,
                                                inner_training_steps,
