@@ -37,6 +37,7 @@ def _fine_tune_model(model: nn.Module,
                    wandb=None,
                    baseline=0
                    ) -> dict:
+    model = model.to(device)
     
     if store_grads:
         inner_optimizer = optim.Adam(model.parameters(), lr=inner_lr)
@@ -68,7 +69,7 @@ def _fine_tune_model(model: nn.Module,
                                            y_batch.type(torch.LongTensor).to(device))
                     loss.backward(create_graph=True,)
                     val_loss += loss.item()
-                    correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch).item()
+                    correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch.to(device)).item()
                     total_items += len(y_batch)
 
         val_loss = val_loss/(j+1)
@@ -78,6 +79,7 @@ def _fine_tune_model(model: nn.Module,
 
     else:
         model_copy = copy.deepcopy(model)
+        model_copy = model_copy.to(device)
         inner_optimizer = optim.Adam(model_copy.parameters(), lr=inner_lr)
         loss_fct = nn.CrossEntropyLoss()
         training_losses = []
@@ -113,7 +115,7 @@ def _fine_tune_model(model: nn.Module,
                     loss = loss_fct(model_copy(x_batch.to(device)),
                                     y_batch.type(torch.LongTensor).to(device))
                     val_loss += loss.item()
-                    correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch).item()
+                    correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch.to(device)).item()
                     total_items += len(y_batch)
 
         val_loss = val_loss/(j+1)
@@ -211,7 +213,7 @@ def get_save_dirs(outpit_root_dir: str) -> list:
 
     return(model_save_dir, res_save_dir)
 
-def get_baseline1(blank_model: nn.Module, val_tasks: list, inner_steps: int, inner_lr: float, wandb=None):
+def get_baseline1(blank_model: nn.Module, val_tasks: list, inner_steps: int, inner_lr: float, wandb=None, device='cpu'):
     logger = {'train':{},'val':{}}
     for task in val_tasks:
         logger['train'][task.task_id] = []
@@ -219,7 +221,7 @@ def get_baseline1(blank_model: nn.Module, val_tasks: list, inner_steps: int, inn
     
     print('\nBASELINE 1: no meta training, no pre-training\n')
     [logger['val'][t.task_id].append(
-            _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=1)) 
+            _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=1, device=device)) 
             for t in val_tasks]
     print('\n')
     return(logger)
@@ -250,6 +252,7 @@ def get_baseline2(blank_model: nn.Module,
     mega_ds.labels = big_Y
 
     trainloader = DataLoader(mega_ds, batch_size=32)
+    blank_model = blank_model.to(device)
 
     optimizer = optim.Adam(blank_model.parameters(), lr=1e-4)
 
@@ -267,7 +270,7 @@ def get_baseline2(blank_model: nn.Module,
             running_loss += loss.item()
             loss.backward()
             optimizer.step()
-            correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch).item()
+            correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch.to(device)).item()
             tot += len(y_batch)
         running_loss = running_loss/(i+1)
         accuracy = correct/tot
@@ -281,7 +284,7 @@ def get_baseline2(blank_model: nn.Module,
 
     print('\nBASELINE 2: no meta training, pre-trained on the entire train task collection\n')
     [logger['val'][t.task_id].append(
-            _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=2)) 
+            _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=2,device=device)) 
             for t in val_tasks]
     
     return(logger)

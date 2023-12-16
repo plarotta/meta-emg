@@ -12,6 +12,7 @@ import wandb
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+import torch
 
 
 
@@ -43,8 +44,12 @@ def main(cfg: DictConfig):
         MODEL_DIR, RES_DIR = None, None
 
     # GET TEST-VAL SPLIT 
-    task_colxn = load_in_task_collection(TC_PATH)
-    train_colxn, val_clxn = train_test_split(task_colxn, test_size=N_VAL_TASKS)
+    # task_colxn = load_in_task_collection(TC_PATH)
+
+    # train_colxn, val_clxn = train_test_split(task_colxn, test_size=N_VAL_TASKS)
+    train_colxn = load_in_task_collection(TC_PATH)
+    val_clxn = load_in_task_collection(r'C:\Users\plarotta\software\meta-emg\data\task_collections\patient_tc_val.json')
+
 
     # DEFINE MODEL + OPTIMIZER
     meta_model = BasicCNN()
@@ -63,9 +68,10 @@ def main(cfg: DictConfig):
                      model_save_dir=MODEL_DIR)
     
 
-
-    base2_logs = get_baseline2(BasicCNN(), train_colxn, val_clxn, INNER_STEPS, INNER_LR) # pre training
-    base1_logs = get_baseline1(BasicCNN(), val_clxn, INNER_STEPS, INNER_LR, wandb_logger) # blank
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    base1_logs = get_baseline1(BasicCNN(), val_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=device) # blank
+    base2_logs = get_baseline2(BasicCNN(), train_colxn, val_clxn, INNER_STEPS, INNER_LR,device=device) # pre training
+    
 
     meta_accs = []
     meta_labs = []
@@ -96,7 +102,7 @@ def main(cfg: DictConfig):
 
     res_table = pd.DataFrame([[*b1_accs,model1_avg],[*b2_accs,model2_avg],[*meta_accs,model3_avg]], 
                        columns=[*meta_labs,'avg'],
-                       index=pd.Index(['Baseline 1: no pre-training, no meta training','M-EMG','Baseline 2: pre-trained model']))
+                       index=pd.Index(['Baseline 1: no pre-training, no meta training','Baseline 2: pre-trained model','M-EMG',]))
     print(res_table)
 
     # Create a figure for the table
@@ -127,14 +133,16 @@ def main(cfg: DictConfig):
     ax.set_xticklabels(meta_labs, rotation=45, ha='right')
     ax.legend()
     plt.show()
+    
 
     if OUT_ROOT:
         with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
             pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
         res_table.to_csv(os.path.join(RES_DIR,'res_table.csv'))
+        fig.savefig(os.path.join(RES_DIR,'res_barplot.png'))
 
     print(f"SUCCESSFULLY COMPLETED MAML RUN.")
-    # return(maml_logs)
+    return(maml_logs)
 
 if __name__ == '__main__':
     main()
