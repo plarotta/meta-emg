@@ -12,6 +12,9 @@ import os
 import copy
 import warnings
 from torch.utils.data import DataLoader
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
 
 # hide warning from loss.backward(retain_graph=True)
 warnings.filterwarnings("ignore", category=UserWarning, module="torch.autograd")
@@ -35,7 +38,7 @@ def _fine_tune_model(model: nn.Module,
                    device='cpu', 
                    store_grads=False,
                    wandb=None,
-                   baseline=0
+                   baseline=None
                    ) -> dict:
     model = model.to(device)
     
@@ -57,7 +60,7 @@ def _fine_tune_model(model: nn.Module,
                 running_loss = running_loss/(i+1)
                 training_losses.append(running_loss)
                 if wandb:
-                    wandb.log({'loop':'fine-tuning','type': 'training', 'task_id': task.task_id, 't_loss': running_loss})
+                    wandb.log({'meta/training/training_loss': running_loss})
             
             val_loss = 0.0
             correct = 0
@@ -75,7 +78,8 @@ def _fine_tune_model(model: nn.Module,
         val_loss = val_loss/(j+1)
         val_accuracy = correct/total_items
         if wandb:
-            wandb.log({'loop':'fine-tuning','type': 'validation', 'task_id': task.task_id, 'v_loss': val_loss, 'v_accuracy': val_accuracy})
+            wandb.log({'meta/training/val_loss': val_loss,
+                       'meta/training/val_acc': val_accuracy})
 
     else:
         model_copy = copy.deepcopy(model)
@@ -99,11 +103,13 @@ def _fine_tune_model(model: nn.Module,
             running_loss = running_loss/(i+1)
             training_losses.append(running_loss)
             if wandb:
-                wandb.log({'loop':'meta validation',
-                           'type': 'training', 
-                           'task_id': task.task_id, 
-                           't_loss': running_loss,
-                           'baseline': baseline})
+                if baseline is not None:
+                    wandb.log({
+                        f'baseline{baseline}/fine_tuning_training_loss': running_loss})
+                else:
+                    wandb.log({
+                        'meta/validation/fine_tuning_training_loss':running_loss
+                    })
         
         val_loss = 0.0
         correct = 0
@@ -121,20 +127,26 @@ def _fine_tune_model(model: nn.Module,
         val_loss = val_loss/(j+1)
         val_accuracy = correct/total_items
         if wandb:
-            wandb.log({'loop':'meta validation',
-                       'type': 'validation', 
-                       'task_id': task.task_id, 
-                       'v_loss': val_loss, 
-                       'v_accuracy': val_accuracy,
-                       'baseline':baseline})
+            if baseline is not None:
+                wandb.log({
+                    f'baseline{baseline}/fine_tuning_val_loss': val_loss,
+                    f'baseline{baseline}/fine_tuning_acc': val_accuracy,
+                })
+            else:
+                    wandb.log({
+                        'meta/validation/fine_tuning_val_loss':running_loss,
+                        'meta/validation/fine_tuning_acc':val_accuracy,
+                    })
+
 
         print(f'task: {task.task_id}, val loss: {val_loss}, val accuracy: {val_accuracy}')
     
     return {'training_losses': training_losses, 'val_loss': val_loss, 'val_accuracy': val_accuracy}
 
 def maml(meta_model: nn.Module, 
-         training_tasks: list, 
-         val_tasks: list,
+         training_tasks: list[EMGTask], 
+         val_tasks: list[EMGTask],
+         test_tasks: list[EMGTask],
          meta_optimizer: optim.Optimizer, 
          inner_training_steps: int, 
          meta_training_steps: int, 
@@ -147,11 +159,13 @@ def maml(meta_model: nn.Module,
     """
     # Check if GPU is available
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(device)
     
-    logger = {'train':{},'val':{}}
+    logger = {'train':{},'val':{}, 'test':{}}
     for t in val_tasks:
         logger['val'][t.task_id] = [] 
+
+    for t in test_tasks:
+        logger['test'][t.task_id] = []
 
     for epoch in tqdm(range(meta_training_steps)):  # Line 2 in the pseudocode
 
@@ -165,20 +179,34 @@ def maml(meta_model: nn.Module,
                                                inner_training_steps,
                                                inner_lr,
                                                device=device,
-                                               store_grads=True)
+                                               store_grads=True,
+                                               wandb=wandb)
             logger['train'][task.task_id].append(task_training_log)
         meta_optimizer.step()  # Line 10 in the pseudocode
 
         [logger['val'][t.task_id].append(
             _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
             for t in val_tasks]
+        avg_val_loss = np.mean([logger['val'][t.task_id][-1]['val_loss'] for t in val_tasks])
+        avg_val_acc = np.mean([logger['val'][t.task_id][-1]['val_accuracy'] for t in val_tasks])
+        
+        if wandb:
+            wandb.log({
+                'meta/validation/avg_val_loss': avg_val_loss,
+                'meta/validation/avg_val_acc': avg_val_acc,
+                'meta/validation/meta_epoch': epoch
+            })
         
         if model_save_dir:
-            avg_val_loss = np.mean([logger['val'][t.task_id][-1]['val_loss'] for t in val_tasks])
             model_folder_name = f'epoch_{epoch:04d}_loss_{avg_val_loss:.4f}'
             os.makedirs(os.path.join(model_save_dir, model_folder_name))
             torch.save(meta_model.state_dict(), 
                        os.path.join(model_save_dir, model_folder_name, 'model_state_dict.pth'))
+    
+    # TODO: log these in wandb as well
+    [logger['test'][t.task_id].append(
+        _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
+        for t in test_tasks]
     
     return logger
 
@@ -213,23 +241,27 @@ def get_save_dirs(outpit_root_dir: str) -> list:
 
     return(model_save_dir, res_save_dir)
 
-def get_baseline1(blank_model: nn.Module, val_tasks: list, inner_steps: int, inner_lr: float, wandb=None, device='cpu'):
-    logger = {'train':{},'val':{}}
-    for task in val_tasks:
-        logger['train'][task.task_id] = []
-        logger['val'][task.task_id] = []
+def get_baseline1(blank_model: nn.Module, 
+                  test_tasks: list[EMGTask], 
+                  inner_steps: int, 
+                  inner_lr: float, 
+                  wandb=None, 
+                  device='cpu'):
+    logger = {'test':{}}
+    for task in test_tasks:
+        logger['test'][task.task_id] = []
     
     print('\nBASELINE 1: no meta training, no pre-training\n')
-    [logger['val'][t.task_id].append(
+    [logger['test'][t.task_id].append(
             _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=1, device=device)) 
-            for t in val_tasks]
+            for t in test_tasks]
     print('\n')
     return(logger)
 
 
 def get_baseline2(blank_model: nn.Module, 
                   train_tasks: list[EMGTask], 
-                  val_tasks: list, 
+                  test_tasks: list, 
                   inner_steps: int, 
                   inner_lr: float, 
                   wandb=None,
@@ -258,7 +290,7 @@ def get_baseline2(blank_model: nn.Module,
 
     criterion = nn.CrossEntropyLoss()
     print("Pre-training baseline 2")
-    for epoch in tqdm(range(30)):
+    for epoch in tqdm(range(45)):
         running_loss = 0.0
         correct = 0
         tot = 0
@@ -274,22 +306,90 @@ def get_baseline2(blank_model: nn.Module,
             tot += len(y_batch)
         running_loss = running_loss/(i+1)
         accuracy = correct/tot
-        # print(f'epoch: {epoch} | training loss: {running_loss} | training accuracy: {accuracy}')
+        if wandb:
+            wandb.log({
+                f'baseline2/pretraining_loss': running_loss,
+                f'baseline2/pretraining_acc': accuracy,
+                f'baseline2/pretraining_epoch': epoch,
+            })
 
 
-    logger = {'train':{},'val':{}}
-    for task in val_tasks:
-        logger['train'][task.task_id] = []
-        logger['val'][task.task_id] = []
+    logger = {'test':{}}
+    for task in test_tasks:
+        logger['test'][task.task_id] = []
 
     print('\nBASELINE 2: no meta training, pre-trained on the entire train task collection\n')
-    [logger['val'][t.task_id].append(
+    [logger['test'][t.task_id].append(
             _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=2,device=device)) 
-            for t in val_tasks]
+            for t in test_tasks]
     
     return(logger)
 
+def process_logs(meta_log, b1_log, b2_log):
 
+    # TODO: reduce these boys into a single for loop
+    meta_accs = []
+    meta_labs = []
+    for t in meta_log['test']:
+        meta_accs.append(meta_log['test'][t][-1]['val_accuracy'])
+        meta_labs.append(t)
+
+    
+    b1_accs = []
+    b1_labs = []
+    for t in b1_log['test']:
+        b1_accs.append(b1_log['test'][t][-1]['val_accuracy'])
+        b1_labs.append(t)
+
+    b2_accs = []
+    b2_labs = []
+    for t in b2_log['test']:
+        b2_accs.append(b2_log['test'][t][-1]['val_accuracy'])
+        b2_labs.append(t)
+
+    assert b2_labs == b1_labs, 'task ordering issue in baseline plots'
+    assert meta_labs == b2_labs, 'task ordering issue in baseline plots'
+
+    # Calculate averages for each model
+    model1_avg = np.mean(b1_accs)
+    model2_avg = np.mean(b2_accs)
+    model3_avg = np.mean(meta_accs)
+
+    res_table = pd.DataFrame([[*b1_accs,model1_avg],[*b2_accs,model2_avg],[*meta_accs,model3_avg]], 
+                       columns=[*meta_labs,'avg'],
+                       index=pd.Index(['Baseline 1: no pre-training, no meta training','Baseline 2: pre-trained model','M-EMG',]))
+    print(res_table)
+
+    # Create a figure for the table
+    fig, ax = plt.subplots(1, figsize=(20, 10))
+
+    
+    # Number of tasks
+    num_tasks = len(meta_labs)
+
+    # Set the bar width
+    bar_width = 0.30
+
+    # Set the positions of the bars on the x-axis
+    r1 = np.arange(num_tasks)
+    r2 = [x + bar_width for x in r1]
+    r3 = [x + bar_width for x in r2]
+
+    # Plotting the grouped bar chart
+    ax.bar(r1, b1_accs, width=bar_width, label='Baseline 1: no pre-training, no meta training')
+    ax.bar(r2, b2_accs, width=bar_width, label='Baseline 2: pre-trained model')
+    ax.bar(r3, meta_accs, width=bar_width, label='M-EMG')
+
+    # Adding labels and title
+    ax.set_xlabel('Tasks')
+    ax.set_ylabel('Accuracy')
+    ax.set_title('Model Performances on Different Tasks')
+    ax.set_xticks([r + bar_width for r in range(num_tasks)], meta_labs)
+    ax.set_xticklabels(meta_labs, rotation=45, ha='right')
+    ax.legend()
+
+    return(res_table, fig)
+    
 
 
 
