@@ -31,7 +31,7 @@ def main(cfg: DictConfig):
     OUT_ROOT = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir if cfg.test.save else None
     WANDB = cfg.test.wandb
 
-    wandb_logger = wandb.init() if WANDB else None
+    wandb_logger = wandb.init(name='no norm') if WANDB else None
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
 
@@ -48,7 +48,7 @@ def main(cfg: DictConfig):
 
 
     # DEFINE MODEL + OPTIMIZER
-    meta_model = BasicCNN()
+    meta_model = BasicCNN(fc_dim=195)
     meta_optimizer = optim.Adam(meta_model.parameters(), lr=OUTER_LR)
 
     # RUN BASELINES ON TEST
@@ -79,6 +79,8 @@ def main(cfg: DictConfig):
         fig.savefig(os.path.join(RES_DIR,'res_barplot.png'))
 
     print(f"SUCCESSFULLY COMPLETED MAML RUN.")
+    if wandb:
+        wandb_logger.finish()
     return(maml_logs)
 
 if __name__ == '__main__':

@@ -139,7 +139,7 @@ def _fine_tune_model(model: nn.Module,
                     })
 
 
-        print(f'task: {task.task_id}, val loss: {val_loss}, val accuracy: {val_accuracy}')
+        # print(f'task: {task.task_id}, val loss: {val_loss}, val accuracy: {val_accuracy}')
     
     return {'training_losses': training_losses, 'val_loss': val_loss, 'val_accuracy': val_accuracy}
 
@@ -153,7 +153,8 @@ def maml(meta_model: nn.Module,
          inner_lr: float,
          n_tasks=3,
          model_save_dir=None,
-         wandb=None) -> dict:
+         wandb=None,
+         test=True) -> dict:
     """
     Algorithm from https://arxiv.org/pdf/1703.03400v3.pdf (MAML for Few-Shot Supervised Learning)
     """
@@ -166,47 +167,62 @@ def maml(meta_model: nn.Module,
 
     for t in test_tasks:
         logger['test'][t.task_id] = []
+    
+    def coll_fn(batch):
+        return(batch)
+    
+    trainloader = DataLoader(training_tasks, batch_size=n_tasks, shuffle=True, collate_fn=coll_fn)
+    # sched = optim.lr_scheduler.CosineAnnealingLR(meta_optimizer, T_max = 100, eta_min=1e-6, verbose=True)
 
-    for epoch in tqdm(range(meta_training_steps)):  # Line 2 in the pseudocode
-
-        tasks = sample_tasks(training_tasks, n_tasks) # Line 3 in the pseudocode
-        meta_optimizer.zero_grad()
-        for task in tasks:
-            if task.task_id not in logger['train']:
-                logger['train'][task.task_id] = []
-            task_training_log = _fine_tune_model(meta_model,
-                                               task,
-                                               inner_training_steps,
-                                               inner_lr,
-                                               device=device,
-                                               store_grads=True,
-                                               wandb=wandb)
-            logger['train'][task.task_id].append(task_training_log)
-        meta_optimizer.step()  # Line 10 in the pseudocode
+    for epoch in range(meta_training_steps):  # Line 2 in the pseudocode
+        print(f'Meta epoch # {epoch}...')
+        for batch_idx, tasks in enumerate(tqdm(trainloader)):
+            meta_optimizer.zero_grad()
+            for task in tasks:
+                if task.task_id not in logger['train']:
+                    logger['train'][task.task_id] = []
+                task_training_log = _fine_tune_model(meta_model,
+                                                task,
+                                                inner_training_steps,
+                                                inner_lr,
+                                                device=device,
+                                                store_grads=True,
+                                                wandb=wandb)
+                logger['train'][task.task_id].append(task_training_log)
+            meta_optimizer.step()  # Line 10 in the pseudocode
 
         [logger['val'][t.task_id].append(
             _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
             for t in val_tasks]
+        
         avg_val_loss = np.mean([logger['val'][t.task_id][-1]['val_loss'] for t in val_tasks])
         avg_val_acc = np.mean([logger['val'][t.task_id][-1]['val_accuracy'] for t in val_tasks])
+        avg_train_loss = np.mean([logger['train'][t.task_id][-1]['val_loss'] for t in training_tasks])
+        avg_train_acc = np.mean([logger['train'][t.task_id][-1]['val_accuracy'] for t in training_tasks])
         
         if wandb:
             wandb.log({
                 'meta/validation/avg_val_loss': avg_val_loss,
                 'meta/validation/avg_val_acc': avg_val_acc,
-                'meta/validation/meta_epoch': epoch
+                'meta/validation/epoch': epoch,
+                'meta/training/avg_train_loss': avg_train_loss,
+                'meta/training/avg_train_acc': avg_train_acc,
             })
         
         if model_save_dir:
             model_folder_name = f'epoch_{epoch:04d}_loss_{avg_val_loss:.4f}'
             os.makedirs(os.path.join(model_save_dir, model_folder_name))
             torch.save(meta_model.state_dict(), 
-                       os.path.join(model_save_dir, model_folder_name, 'model_state_dict.pth'))
-    
+                    os.path.join(model_save_dir, model_folder_name, 'model_state_dict.pth'))
+
+        print(f'average val accuracy: {avg_val_acc}')
+        # sched.step()
+
     # TODO: log these in wandb as well
-    [logger['test'][t.task_id].append(
-        _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
-        for t in test_tasks]
+    if test:
+        [logger['test'][t.task_id].append(
+            _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
+            for t in test_tasks]
     
     return logger
 
@@ -240,6 +256,18 @@ def get_save_dirs(outpit_root_dir: str) -> list:
     os.makedirs(res_save_dir)
 
     return(model_save_dir, res_save_dir)
+
+def eval_trained_meta(model, test_tasks, inner_steps, inner_lr, wandb=None,device=None):
+    logger = {'test':{}}
+    for task in test_tasks:
+        logger['test'][task.task_id] = []
+
+    print('\nevaluating trained meta model...\n')
+    [logger['test'][t.task_id].append(
+            _fine_tune_model(model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, device=device)) 
+            for t in test_tasks]
+    print('\n')
+    return(logger)
 
 def get_baseline1(blank_model: nn.Module, 
                   test_tasks: list[EMGTask], 

@@ -43,6 +43,7 @@ class EMGDataset(Dataset):
       df = df[["emg0","emg1","emg2","emg3","emg4","emg5","emg6","emg7","gt"]]
       raw_x = df.loc[:,df.columns != "gt"].to_numpy()[:int(len(df)*frac_data)]
       raw_y = df.loc[:,df.columns == "gt"].to_numpy().flatten()[:int(len(df)*frac_data)]
+      np.clip(raw_x, a_min=None, a_max=1000) 
       return(raw_x, raw_y)
 
   def process_data(self,
@@ -58,7 +59,7 @@ class EMGDataset(Dataset):
               x_raw[:,lead] = sig.sosfilt(filter, x_raw[:,lead])
 
       if scaler:
-          raw_x = scaler.fit_transform(raw_x)
+          x_raw = scaler.fit_transform(x_raw)
       split_arrays = np.split(x_raw[:x_raw.shape[0] // time_seq_len * time_seq_len], x_raw.shape[0] //time_seq_len)
       data_x = np.array(split_arrays, dtype = np.float64)
       data_y = np.split(y_raw[:y_raw.shape[0] // time_seq_len * time_seq_len], y_raw.shape[0] //time_seq_len)
