@@ -1,4 +1,4 @@
-**M-EMG**
+# M-EMG
 
 Meta-EMG implements Model-agnostic Meta-learning (MAML: https://arxiv.org/pdf/1703.03400.pdf) for the purpose of building models that can more quickly adapt to a patient.
 
@@ -16,6 +16,8 @@ Before running anything, make sure you clone our environment from the YML file p
 To run the GUI to generate a new task collection,
 
 ```python source/task_space_generator.py```
+
+## Running...
 
 To run MAML, you need a task collection and a config file defining the hyperparameters and the location of the task collection. We provide a sample config file config.yml and its contents are displayed and defined below:
 
