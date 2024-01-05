@@ -1,4 +1,4 @@
-# M-EMG
+# M-EMG [WIP]
 
 Meta-EMG implements Model-agnostic Meta-learning (MAML: https://arxiv.org/pdf/1703.03400.pdf) for the purpose of building models that can more quickly adapt to a patient.
 
