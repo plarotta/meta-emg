@@ -172,7 +172,7 @@ def maml(meta_model: nn.Module,
         return(batch)
     
     trainloader = DataLoader(training_tasks, batch_size=n_tasks, shuffle=True, collate_fn=coll_fn)
-    # sched = optim.lr_scheduler.CosineAnnealingLR(meta_optimizer, T_max = 100, eta_min=1e-6, verbose=True)
+    sched = optim.lr_scheduler.StepLR(meta_optimizer, 15, gamma=.75, verbose=True)
 
     for epoch in range(meta_training_steps):  # Line 2 in the pseudocode
         print(f'Meta epoch # {epoch}...')
@@ -216,7 +216,7 @@ def maml(meta_model: nn.Module,
                     os.path.join(model_save_dir, model_folder_name, 'model_state_dict.pth'))
 
         print(f'average val accuracy: {avg_val_acc}')
-        # sched.step()
+        sched.step()
 
     # TODO: log these in wandb as well
     if test:
