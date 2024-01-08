@@ -30,8 +30,6 @@ This repo contributes the following:
 - A full MAML implementation based on the original TF implementation (https://github.com/cbfinn/maml) and the Higher module for higher-order gradients (https://github.com/facebookresearch/higher)
 - Hydra integration so that experiments can be setup via YAML files and tracked easily
 
-Before running anything, make sure you clone our environment from the YML file provided. 
-
 To run the GUI to generate a new task collection,
 
 ```python source/task_space_generator.py```
