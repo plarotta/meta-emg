@@ -13,7 +13,9 @@ Training said model is difficult because there is significant patient-patient va
 
 ## Meta learning
 
-Meta-learning, or learning to learn, is a machine learning approach where models are trained to quickly adapt to new tasks with minimal data. It focuses on generalization across tasks by teaching models high-level skills or representations, enabling rapid learning and adaptation to new, unseen challenges. Model-agnostic meta learning (MAML) is an algorithm developed in [Finn et al.](https://arxiv.org/pdf/1703.03400.pdf) where a model is fine-tuned to individual tasks, and the aggregate loss of the fine-tuned models with respect to the initial model's parameters is what's used for the gradient step of the initial model. This initial model is the meta model. 
+Meta-learning, or learning to learn, is a machine learning approach where models are trained to quickly adapt to new tasks with minimal data. It focuses on generalization across tasks by teaching models high-level skills or representations, enabling rapid learning and adaptation to new, unseen challenges. 
+
+Model-agnostic meta learning (MAML) is an algorithm developed in [Finn et al.](https://arxiv.org/pdf/1703.03400.pdf) where a model is fine-tuned to individual tasks, and the aggregate loss of the fine-tuned models with respect to the initial model's parameters is what's used for the gradient step of the initial model. This initial model is the meta model. 
 
 ![image](https://github.com/plarotta/meta-emg/assets/20714356/abd212af-d1fa-4c38-ac59-c5725b00e537)
 
