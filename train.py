@@ -31,8 +31,12 @@ def main(cfg: DictConfig):
     TC_PATH = cfg.test.task_collection_json
     OUT_ROOT = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir if cfg.test.save else None
     WANDB = cfg.test.wandb
+    FC_UNITS = cfg.test.fc_units
+    BATCH_SIZE = cfg.test.batch_size
+    TIME_SEQ_LEN = cfg.test.time_seq_len
+    STRIDE = cfg.test.stride
 
-    wandb_logger = wandb.init(name='memg fc dim of 128') if WANDB else None
+    wandb_logger = wandb.init(name='overlap, and small model') if WANDB else None
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
 
@@ -43,18 +47,21 @@ def main(cfg: DictConfig):
         MODEL_DIR, RES_DIR = None, None
 
     # GET TEST-VAL SPLIT 
-    task_colxn = load_in_task_collection(TC_PATH)
+    task_colxn = load_in_task_collection(TC_PATH,
+                                         batch_size=BATCH_SIZE, 
+                                         time_seq=TIME_SEQ_LEN, 
+                                         stride=STRIDE)
     train_colxn, val_clxn = train_test_split(task_colxn, test_size=N_VAL_TASKS)
     test_clxn = load_in_task_collection(r'C:\Users\plarotta\software\meta-emg\data\task_collections\patient_tc_test.json')
 
 
     # DEFINE MODEL + OPTIMIZER
-    meta_model = BasicCNN(fc_dim=128)
+    meta_model = BasicCNN(fc_dim=FC_UNITS)
     meta_optimizer = optim.Adam(meta_model.parameters(), lr=OUTER_LR)
 
     # RUN BASELINES ON TEST
-    base1_logs = get_baseline1(BasicCNN(fc_dim=128), test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=device) # blank aka self
-    base2_logs = get_baseline2(BasicCNN(fc_dim=128), train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=device, wandb=wandb_logger) # pre training aka fine-tuned
+    base1_logs = get_baseline1(BasicCNN(fc_dim=FC_UNITS), test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=device) # blank aka self
+    base2_logs = get_baseline2(BasicCNN(fc_dim=FC_UNITS), train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=device, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN) # pre training aka fine-tuned
 
     # # # # RUN MAML
     print("SETUP COMPLETE. BEGINNING MAML...")

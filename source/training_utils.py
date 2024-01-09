@@ -236,14 +236,18 @@ def _safe_json_load(filepath):
     except json.JSONDecodeError:
         print(f"Error decoding JSON in file {filepath}. No task collection loaded.")
 
-def load_in_task_collection(filepath):
+def load_in_task_collection(filepath, batch_size=32, time_seq=25, stride=1):
     # Load task collection from a JSON file
     tc_list = _safe_json_load(filepath)
     curr_wd = os.getcwd()
     assert curr_wd[-8:] == 'meta-emg', "train.py must be run from the root of the meta-emg directory"
     root_dir = os.path.join(curr_wd,'data','collected_data')
     task_collection = [
-        EMGTask(os.path.join(root_dir, d['session']), d['condition'], train_frac=0.25) 
+        EMGTask(os.path.join(root_dir, d['session']), d['condition'], 
+                bsize=batch_size, 
+                time_series_len=time_seq, 
+                stride=stride
+                ) 
         for d in tc_list if 'Augmen' not in d['session']]
 
     return(task_collection)
@@ -293,12 +297,15 @@ def get_baseline2(blank_model: nn.Module,
                   inner_steps: int, 
                   inner_lr: float, 
                   wandb=None,
-                  device='cpu'):
+                  device='cpu',
+                  stride=1,
+                  time_seq_len=25,
+                  batch_size=32):
     # generate big training dataset
     big_X = None
     big_Y = None
     for task in train_tasks:
-        d = EMGDataset(task.session_path, task.condition, frac_data=1)
+        d = EMGDataset(task.session_path, task.condition, time_seq_len=time_seq_len, stride=stride)
         
         if big_X is None:
             big_X = np.copy(d.emg_signals)
@@ -307,18 +314,18 @@ def get_baseline2(blank_model: nn.Module,
         big_X = np.concatenate((big_X, d.emg_signals))
         big_Y = np.concatenate((big_Y, d.labels))
     
-    mega_ds = EMGDataset(task.session_path, task.condition)
+    mega_ds = EMGDataset(task.session_path, task.condition) # doesnt matter
     mega_ds.emg_signals = big_X
     mega_ds.labels = big_Y
 
-    trainloader = DataLoader(mega_ds, batch_size=32)
+    trainloader = DataLoader(mega_ds, batch_size=batch_size)
     blank_model = blank_model.to(device)
 
     optimizer = optim.Adam(blank_model.parameters(), lr=1e-4)
 
     criterion = nn.CrossEntropyLoss()
     print("Pre-training baseline 2")
-    for epoch in tqdm(range(45)):
+    for epoch in tqdm(range(50)):
         running_loss = 0.0
         correct = 0
         tot = 0
