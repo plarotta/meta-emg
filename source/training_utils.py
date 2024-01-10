@@ -93,6 +93,7 @@ def _fine_tune_model(model: nn.Module,
             running_loss = 0.0
 
             for i, (x_batch, y_batch) in enumerate(task.trainloader):
+                # print(x_batch.shape)
                 inner_optimizer.zero_grad()
                 loss = loss_fct(model_copy(x_batch.to(device)), 
                                 y_batch.type(torch.LongTensor).to(device))
@@ -330,6 +331,7 @@ def get_baseline2(blank_model: nn.Module,
         correct = 0
         tot = 0
         for i, (x_batch, y_batch) in enumerate(trainloader):
+            # print(x_batch.shape)
             optimizer.zero_grad()
             preds = blank_model(x_batch.to(device))
             loss = criterion(preds, 

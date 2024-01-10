@@ -1,0 +1,6 @@
+*.log
+*.pyc
+*.pth
+*.yaml
+wandb/
+__pycache__
