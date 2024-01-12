@@ -251,7 +251,7 @@ def get_baseline2(blank_model: nn.Module,
     big_X = None
     big_Y = None
     for task in train_tasks:
-        d = EMGDataset(task.session_path, task.condition, time_seq_len=time_seq_len, stride=stride)
+        d = EMGDataset(task.session_path, task.condition, time_seq_len=time_seq_len, stride=stride, scale=True)
         
         if big_X is None:
             big_X = np.copy(d.emg_signals)

@@ -65,7 +65,7 @@ class EMGDataset(Dataset):
                     y_raw: np.array,
                     time_seq_len=25,
                     filter=False,
-                    scale=None,
+                    scale=False,
                     stride=3
                     ) -> list[np.array, np.array]:
         
