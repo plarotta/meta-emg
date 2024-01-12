@@ -32,60 +32,19 @@ def sample_tasks(task_distribution: list,
 
 
 def _fine_tune_model(model: nn.Module, 
-                   task: EMGTask, 
-                   inner_training_steps: int, 
-                   inner_lr: float, 
-                   device='cpu', 
-                   store_grads=False,
-                   wandb=None,
-                   baseline=None
-                   ) -> dict:
+                    task: EMGTask, 
+                    inner_training_steps: int, 
+                    inner_lr: float, 
+                    device='cpu', 
+                    store_grads=False,
+                    wandb=None,
+                    baseline=None
+                    ) -> dict:
     model = model.to(device)
-    
-    if store_grads:
-        inner_optimizer = optim.Adam(model.parameters(), lr=inner_lr)
-        # this wrapper is what allows us to store the inner loop gradients for the meta update
-        with higher.innerloop_ctx(model, inner_optimizer, copy_initial_weights=False) as (fmodel, diffopt):
-            training_losses = []
 
-            # fine tune meta on current task
-            for _ in range(inner_training_steps):
-                running_loss = 0.0
-
-                for i, (x_batch, y_batch) in enumerate(task.trainloader):
-                    loss = F.cross_entropy(fmodel.forward(x_batch.to(device)), 
-                                        y_batch.type(torch.LongTensor).to(device))
-                    diffopt.step(loss)
-                    running_loss += loss.item()
-                running_loss = running_loss/(i+1)
-                training_losses.append(running_loss)
-                if wandb:
-                    wandb.log({'meta/training/training_loss': running_loss})
-            
-            val_loss = 0.0
-            correct = 0
-            total_items = 0
-            # get val loss for task, and send grad(theta_prime,theta) back 
-            for j, (x_batch, y_batch) in enumerate(task.testloader):
-                    preds = fmodel.forward(x_batch.to(device))
-                    loss = F.cross_entropy(preds, 
-                                           y_batch.type(torch.LongTensor).to(device))
-                    loss.backward(create_graph=True,)
-                    val_loss += loss.item()
-                    correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch.to(device)).item()
-                    total_items += len(y_batch)
-
-        val_loss = val_loss/(j+1)
-        val_accuracy = correct/total_items
-        if wandb:
-            wandb.log({'meta/training/val_loss': val_loss,
-                       'meta/training/val_acc': val_accuracy})
-
-    else:
-        model_copy = copy.deepcopy(model)
-        model_copy = model_copy.to(device)
-        inner_optimizer = optim.Adam(model_copy.parameters(), lr=inner_lr)
-        loss_fct = nn.CrossEntropyLoss()
+    inner_optimizer = optim.Adam(model.parameters(), lr=inner_lr)
+    # this wrapper is what allows us to store the inner loop gradients for the meta update
+    with higher.innerloop_ctx(model, inner_optimizer, copy_initial_weights=False, track_higher_grads=store_grads) as (fmodel, diffopt):
         training_losses = []
 
         # fine tune meta on current task
@@ -93,55 +52,41 @@ def _fine_tune_model(model: nn.Module,
             running_loss = 0.0
 
             for i, (x_batch, y_batch) in enumerate(task.trainloader):
-                # print(x_batch.shape)
-                inner_optimizer.zero_grad()
-                loss = loss_fct(model_copy(x_batch.to(device)), 
-                                y_batch.type(torch.LongTensor).to(device))
+                loss = F.cross_entropy(fmodel.forward(x_batch.to(device)), 
+                                    y_batch.type(torch.LongTensor).to(device))
+                diffopt.step(loss)
                 running_loss += loss.item()
-                loss.backward()
-                inner_optimizer.step()
-                
             running_loss = running_loss/(i+1)
             training_losses.append(running_loss)
             if wandb:
-                if baseline is not None:
-                    wandb.log({
-                        f'baseline{baseline}/fine_tuning_training_loss': running_loss})
-                else:
-                    wandb.log({
-                        'meta/validation/fine_tuning_training_loss':running_loss
-                    })
+                wandb.log({'meta/training/training_loss': running_loss})
         
         val_loss = 0.0
         correct = 0
         total_items = 0
-        # get val loss for task
-        with torch.no_grad():
-            for j, (x_batch, y_batch) in enumerate(task.testloader):
-                    preds = model_copy(x_batch.to(device))
-                    loss = loss_fct(model_copy(x_batch.to(device)),
-                                    y_batch.type(torch.LongTensor).to(device))
-                    val_loss += loss.item()
-                    correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch.to(device)).item()
-                    total_items += len(y_batch)
+        # get val loss for task, and send grad(theta_prime,theta) back 
+        for j, (x_batch, y_batch) in enumerate(task.testloader):
+                preds = fmodel.forward(x_batch.to(device))
+                loss = F.cross_entropy(preds, 
+                                        y_batch.type(torch.LongTensor).to(device))
+                loss.backward(create_graph=True,)
+                val_loss += loss.item()
+                correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch.to(device)).item()
+                total_items += len(y_batch)
 
-        val_loss = val_loss/(j+1)
-        val_accuracy = correct/total_items
-        if wandb:
-            if baseline is not None:
+    val_loss = val_loss/(j+1)
+    val_accuracy = correct/total_items
+    if wandb:
+        if store_grads:
+            wandb.log({'meta/training/val_loss': val_loss,
+                    'meta/training/val_acc': val_accuracy})
+        elif baseline is not None:
                 wandb.log({
-                    f'baseline{baseline}/fine_tuning_val_loss': val_loss,
-                    f'baseline{baseline}/fine_tuning_acc': val_accuracy,
-                })
-            else:
-                    wandb.log({
-                        'meta/validation/fine_tuning_val_loss':running_loss,
-                        'meta/validation/fine_tuning_acc':val_accuracy,
-                    })
-
-
-        # print(f'task: {task.task_id}, val loss: {val_loss}, val accuracy: {val_accuracy}')
-    
+                    f'baseline{baseline}/fine_tuning_training_loss': running_loss})
+        else:
+            wandb.log({
+                'meta/validation/fine_tuning_training_loss':running_loss
+            })
     return {'training_losses': training_losses, 'val_loss': val_loss, 'val_accuracy': val_accuracy}
 
 def maml(meta_model: nn.Module, 

@@ -1,17 +1,19 @@
 test:
     inner_lr: 1e-4 #0.004
     outer_lr: 5e-4 #5e-5
-    meta_steps: 20
+    meta_steps: 5
     inner_steps: 5
-    n_val_tasks: 5
-    n_train_tasks: 2
-    task_collection_json: 'C:\Users\plarotta\software\meta-emg\data\task_collections\patient_tc_train.json'
+    n_val_tasks: 3
+    n_train_tasks: 1
+    train_collection_json: 'C:\Users\plarotta\software\meta-emg\data\task_collections\cross_patient\p1_train.json'
+    test_collection_json: 'C:\Users\plarotta\software\meta-emg\data\task_collections\cross_patient\p1_test.json'
     save: True
     wandb: True
     fc_units: 32
     batch_size: 32
-    time_seq_len: 25
+    time_seq_len: 50
     stride: 5
+    run_name: 'p1'
 
 hydra:
     run:

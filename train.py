@@ -28,15 +28,17 @@ def main(cfg: DictConfig):
     INNER_STEPS = cfg.test.inner_steps
     N_VAL_TASKS = cfg.test.n_val_tasks
     N_TRAIN_TASKS = cfg.test.n_train_tasks
-    TC_PATH = cfg.test.task_collection_json
+    TRAIN_PATH = cfg.test.train_collection_json
+    TEST_PATH = cfg.test.test_collection_json
     OUT_ROOT = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir if cfg.test.save else None
     WANDB = cfg.test.wandb
     FC_UNITS = cfg.test.fc_units
     BATCH_SIZE = cfg.test.batch_size
     TIME_SEQ_LEN = cfg.test.time_seq_len
     STRIDE = cfg.test.stride
+    RUN_NAME = cfg.test.run_name
 
-    wandb_logger = wandb.init(name='new paradigm') if WANDB else None
+    wandb_logger = wandb.init(name=f'{RUN_NAME} cross-patient exp') if WANDB else None
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
 
@@ -47,12 +49,16 @@ def main(cfg: DictConfig):
         MODEL_DIR, RES_DIR = None, None
 
     # GET TEST-VAL SPLIT 
-    task_colxn = load_in_task_collection(TC_PATH,
+    task_colxn = load_in_task_collection(TRAIN_PATH,
                                          batch_size=BATCH_SIZE, 
                                          time_seq=TIME_SEQ_LEN, 
                                          stride=STRIDE)
-    train_colxn, val_clxn = train_test_split(task_colxn, test_size=N_VAL_TASKS)
-    test_clxn = load_in_task_collection(r'C:\Users\plarotta\software\meta-emg\data\task_collections\patient_tc_test.json',
+    if N_VAL_TASKS > 0:
+        train_colxn, val_clxn = train_test_split(task_colxn, test_size=N_VAL_TASKS)
+    else:
+        train_colxn = task_colxn
+        val_clxn = task_colxn
+    test_clxn = load_in_task_collection(TEST_PATH,
                                          batch_size=BATCH_SIZE, 
                                          time_seq=TIME_SEQ_LEN, 
                                          stride=STRIDE)
@@ -60,7 +66,7 @@ def main(cfg: DictConfig):
 
     # DEFINE MODEL + OPTIMIZER
     meta_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
-    meta_optimizer = optim.Adam(meta_model.parameters(), lr=OUTER_LR)
+    meta_optimizer = optim.AdamW(meta_model.parameters(), lr=OUTER_LR)
 
     # # RUN BASELINES ON TEST
     base1_logs = get_baseline1(BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN), test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=device) # blank aka self
