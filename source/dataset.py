@@ -3,6 +3,7 @@ import numpy as np
 import scipy.signal as sig
 from pandas import read_csv
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 
 
 class EMGDataset(Dataset):
@@ -12,7 +13,7 @@ class EMGDataset(Dataset):
                 condition: str,
                 time_seq_len=25,
                 filter=False,
-                scaler=None,
+                scale=False,
                 rorcr_idx=-1,
                 train=True,
                 stride=1):
@@ -24,7 +25,7 @@ class EMGDataset(Dataset):
                                                           self.raw_y,
                                                           time_seq_len = time_seq_len,
                                                           filter = filter,
-                                                          scaler = scaler,
+                                                          scale = scale,
                                                           stride=stride)
 
     def __len__(self):
@@ -43,7 +44,6 @@ class EMGDataset(Dataset):
                     condition: str,
                     rorcr_idx: str
                     ) -> list[np.array, np.array]:
-        #TODO: fix this so that the dataset generation is accurate
 
         df = read_csv(str(file_path + '/' + file_path[-2:] +'_'+ condition + '.csv'))
         df = df[["emg0","emg1","emg2","emg3","emg4","emg5","emg6","emg7","gt"]]
@@ -65,9 +65,16 @@ class EMGDataset(Dataset):
                     y_raw: np.array,
                     time_seq_len=25,
                     filter=False,
-                    scaler=None,
+                    scale=None,
                     stride=3
                     ) -> list[np.array, np.array]:
+        
+        np.clip(x_raw, a_max=1000, a_min=0)
+        
+        if scale is True:
+            scaler = StandardScaler()
+            x_raw = scaler.fit_transform(x_raw)
+
 
         chunk_head = 0
         chunk_tail = time_seq_len
@@ -75,8 +82,6 @@ class EMGDataset(Dataset):
         signal_end = len(x_raw)
         x_holder = np.zeros(((signal_end-time_seq_len)//stride+1,  time_seq_len, 8))
         y_holder = np.zeros(((signal_end-time_seq_len)//stride+1,  time_seq_len))
-        cholder = []
-
         n = 0
 
         while chunk_tail < signal_end:
@@ -96,9 +101,8 @@ class EMGDataset(Dataset):
     
 
 if __name__ == '__main__':
-    a = EMGDataset('/Users/plarotta/software/meta-emg/data/collected_data/2023_03_14_p4', '111')
+    a = EMGDataset('/Users/plarotta/software/meta-emg/data/collected_data/2023_03_14_p4', '111', scale=True)
     print(a.emg_signals.shape)
-    print(a.emg_signals2.shape)
 
 
 

@@ -38,7 +38,7 @@ def main(cfg: DictConfig):
     STRIDE = cfg.test.stride
     RUN_NAME = cfg.test.run_name
 
-    wandb_logger = wandb.init(name=f'{RUN_NAME} cross-patient exp') if WANDB else None
+    wandb_logger = wandb.init(name=f'{RUN_NAME} cross-patient exp with normalization') if WANDB else None
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
 
