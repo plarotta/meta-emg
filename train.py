@@ -37,6 +37,7 @@ def main(cfg: DictConfig):
     TIME_SEQ_LEN = cfg.test.time_seq_len
     STRIDE = cfg.test.stride
     RUN_NAME = cfg.test.run_name
+    SCALE = cfg.test.scale
 
     wandb_logger = wandb.init(name=f'{RUN_NAME} cross-patient exp with normalization + correct baselines') if WANDB else None
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -52,7 +53,8 @@ def main(cfg: DictConfig):
     task_colxn = load_in_task_collection(TRAIN_PATH,
                                          batch_size=BATCH_SIZE, 
                                          time_seq=TIME_SEQ_LEN, 
-                                         stride=STRIDE)
+                                         stride=STRIDE,
+                                         scale=SCALE)
     if N_VAL_TASKS > 0:
         train_colxn, val_clxn = train_test_split(task_colxn, test_size=N_VAL_TASKS)
     else:
@@ -61,7 +63,8 @@ def main(cfg: DictConfig):
     test_clxn = load_in_task_collection(TEST_PATH,
                                          batch_size=BATCH_SIZE, 
                                          time_seq=TIME_SEQ_LEN, 
-                                         stride=STRIDE)
+                                         stride=STRIDE,
+                                         scale=SCALE)
 
 
     # DEFINE MODEL + OPTIMIZER
@@ -70,7 +73,7 @@ def main(cfg: DictConfig):
 
     # # RUN BASELINES ON TEST
     base1_logs = get_baseline1(BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN), test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=device) # blank aka self
-    base2_logs = get_baseline2(BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN), train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=device, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN) # pre training aka fine-tuned
+    base2_logs = get_baseline2(BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN), train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=device, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
 
     # # # # RUN MAML
     print("SETUP COMPLETE. BEGINNING MAML...")

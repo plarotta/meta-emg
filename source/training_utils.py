@@ -182,7 +182,7 @@ def _safe_json_load(filepath):
     except json.JSONDecodeError:
         print(f"Error decoding JSON in file {filepath}. No task collection loaded.")
 
-def load_in_task_collection(filepath, batch_size=32, time_seq=25, stride=1):
+def load_in_task_collection(filepath, batch_size=32, time_seq=25, stride=1, scale=False):
     # Load task collection from a JSON file
     tc_list = _safe_json_load(filepath)
     curr_wd = os.getcwd()
@@ -192,7 +192,8 @@ def load_in_task_collection(filepath, batch_size=32, time_seq=25, stride=1):
         EMGTask(os.path.join(root_dir, d['session']), d['condition'], 
                 bsize=batch_size, 
                 time_series_len=time_seq, 
-                stride=stride
+                stride=stride,
+                scale=scale
                 ) 
         for d in tc_list if 'Augmen' not in d['session']]
 
@@ -246,12 +247,13 @@ def get_baseline2(blank_model: nn.Module,
                   device='cpu',
                   stride=1,
                   time_seq_len=25,
+                  scale=False,
                   batch_size=32):
     # generate big training dataset
     big_X = None
     big_Y = None
     for task in train_tasks:
-        d = EMGDataset(task.session_path, task.condition, time_seq_len=time_seq_len, stride=stride, scale=True)
+        d = EMGDataset(task.session_path, task.condition, time_seq_len=time_seq_len, stride=stride, scale=scale)
         
         if big_X is None:
             big_X = np.copy(d.emg_signals)

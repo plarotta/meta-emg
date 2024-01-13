@@ -8,12 +8,12 @@ import os
 
 
 class EMGTask():
-    def __init__(self, session_path, condition, bsize=32, time_series_len=25, stride=1):
+    def __init__(self, session_path, condition, bsize=32, time_series_len=25, stride=1, scale=False):
         self.session_path = session_path
         self.condition = condition
         self.rorcr_split_index = self.get_rorcr_idx(session_path, condition)
-        self.train_data = EMGDataset(session_path, condition, rorcr_idx=self.rorcr_split_index, train=True, time_seq_len=time_series_len, stride=stride, scale=True)
-        self.test_data = EMGDataset(session_path, condition, rorcr_idx=self.rorcr_split_index, train=False, time_seq_len=time_series_len, stride=stride, scale=True)
+        self.train_data = EMGDataset(session_path, condition, rorcr_idx=self.rorcr_split_index, train=True, time_seq_len=time_series_len, stride=stride, scale=scale)
+        self.test_data = EMGDataset(session_path, condition, rorcr_idx=self.rorcr_split_index, train=False, time_seq_len=time_series_len, stride=stride, scale=scale)
         self.trainloader = DataLoader(self.train_data, batch_size=bsize)
         self.testloader = DataLoader(self.test_data, batch_size=bsize)
         self.task_id = session_path[-2:] + '_' + condition
