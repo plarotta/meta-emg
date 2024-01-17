@@ -247,7 +247,7 @@ def get_baseline2(blank_model: nn.Module,
                   device='cpu',
                   stride=1,
                   time_seq_len=25,
-                  scale=False,
+                  scale=0,
                   batch_size=32):
     # generate big training dataset
     big_X = None

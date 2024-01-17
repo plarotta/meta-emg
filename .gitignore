@@ -4,3 +4,5 @@
 *.yaml
 wandb/
 __pycache__
+models/
+.hydra/

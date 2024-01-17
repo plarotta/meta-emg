@@ -1,19 +1,31 @@
 from source.dataset import EMGDataset
 
 from torch.utils.data import DataLoader
-from sklearn.preprocessing import MinMaxScaler, Normalizer
 from pandas import read_csv
 import matplotlib.pyplot as plt
 import os
 
 
 class EMGTask():
-    def __init__(self, session_path, condition, bsize=32, time_series_len=25, stride=1, scale=False):
+    def __init__(self, session_path, condition, bsize=32, time_series_len=25, stride=1, scale=0):
         self.session_path = session_path
         self.condition = condition
         self.rorcr_split_index = self.get_rorcr_idx(session_path, condition)
-        self.train_data = EMGDataset(session_path, condition, rorcr_idx=self.rorcr_split_index, train=True, time_seq_len=time_series_len, stride=stride, scale=scale)
-        self.test_data = EMGDataset(session_path, condition, rorcr_idx=self.rorcr_split_index, train=False, time_seq_len=time_series_len, stride=stride, scale=scale)
+        self.train_data = EMGDataset(session_path, 
+                                     condition, 
+                                     rorcr_idx=self.rorcr_split_index, 
+                                     train=True, 
+                                     time_seq_len=time_series_len, 
+                                     stride=stride, 
+                                     scale=scale)
+        self.test_data = EMGDataset(session_path, 
+                                    condition, 
+                                    rorcr_idx=self.rorcr_split_index, 
+                                    train=False, 
+                                    time_seq_len=time_series_len, 
+                                    stride=stride, 
+                                    scale=scale,
+                                    scaler=self.train_data.scaler if scale == 1 else None) # use stats from train set
         self.trainloader = DataLoader(self.train_data, batch_size=bsize)
         self.testloader = DataLoader(self.test_data, batch_size=bsize)
         self.task_id = session_path[-2:] + '_' + condition
