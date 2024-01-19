@@ -6,3 +6,4 @@ wandb/
 __pycache__
 models/
 .hydra/
+*.DS_Store
