@@ -1,4 +1,4 @@
-from source.models import BasicCNN
+from source.models import BasicCNN, TCN
 import torch.optim as optim
 from source.training_utils import maml, load_in_task_collection, get_save_dirs, get_baseline1, get_baseline2, process_logs
 from sklearn.model_selection import train_test_split
@@ -69,12 +69,18 @@ def main(cfg: DictConfig):
 
 
     # DEFINE MODEL + OPTIMIZER
-    meta_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
+    # meta_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
+    meta_model = TCN(in_channels=8, layer_channels=3*[25], seq_len=TIME_SEQ_LEN)
+
     meta_optimizer = optim.AdamW(meta_model.parameters(), lr=OUTER_LR)
 
     # # RUN BASELINES ON TEST
-    base1_logs = get_baseline1(BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN), test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=device) # blank aka self
-    base2_logs = get_baseline2(BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN), train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=device, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
+    # base1_logs = get_baseline1(BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN), test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=device) # blank aka self
+    # base2_logs = get_baseline2(BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN), train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=device, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
+    
+    base1_logs = get_baseline1(TCN(in_channels=8, layer_channels=3*[25], seq_len=TIME_SEQ_LEN), test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=device) # blank aka self
+    base2_logs = get_baseline2(TCN(in_channels=8, layer_channels=3*[25], seq_len=TIME_SEQ_LEN), train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=device, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
+
 
     # # # # RUN MAML
     print("SETUP COMPLETE. BEGINNING MAML...")

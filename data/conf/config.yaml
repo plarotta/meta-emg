@@ -1,7 +1,7 @@
 test:
     inner_lr: 1e-4 #0.004
     outer_lr: 5e-4 #5e-5
-    meta_steps: 30
+    meta_steps: 20
     inner_steps: 5
     n_val_tasks: 3
     n_train_tasks: 1
@@ -11,10 +11,10 @@ test:
     wandb: True
     fc_units: 32
     batch_size: 32
-    time_seq_len: 50
+    time_seq_len: 30
     stride: 5
-    run_name: 'even bigger time seq'
-    scale: 2 # 2 for minmax, 1 for standardization
+    run_name: 'trying out temp conv with more steps'
+    scale: 1 # 2 for minmax, 1 for standardization
 
 
 

@@ -101,9 +101,10 @@ class TCN(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
+        x = x.float()
+        x = torch.permute(x, (0,2,1))
         x = self.tcn(x)
         x = self.flatten(x)
-        print(x.shape)
         x = self.relu(self.linear1(x))
         x = self.linear2(x)
         return(x)
