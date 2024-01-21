@@ -1,4 +1,4 @@
-from source.models import BasicCNN, TCN
+from source.models import BasicCNN, TCN, BasicDNN
 import torch.optim as optim
 from source.training_utils import maml, load_in_task_collection, get_save_dirs, get_baseline1, get_baseline2, process_logs
 from sklearn.model_selection import train_test_split
@@ -16,12 +16,8 @@ import shutil
 @hydra.main(version_base=None, config_path="data/conf", config_name="config")
 def main(cfg: DictConfig):
 
-    # SET SEEDS FOR REPRODUCIBILITY
-    numpy.random.seed(0)
-    manual_seed(0)
-
     # PRINT OUT PARAMS & LOAD THEM
-    
+    SEED = cfg.test.seed
     INNER_LR = cfg.test.inner_lr
     OUTER_LR = cfg.test.outer_lr
     META_STEPS = cfg.test.meta_steps
@@ -38,10 +34,26 @@ def main(cfg: DictConfig):
     STRIDE = cfg.test.stride
     RUN_NAME = cfg.test.run_name
     SCALE = cfg.test.scale
+    DEVICE = cfg.test.device
+    MODEL = cfg.test.model.lower()
 
+    # SPIN UP WANDB RUN
     wandb_logger = wandb.init(name=f'{RUN_NAME}') if WANDB else None
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(device)
+    
+    # SET SEEDS FOR REPRODUCIBILITY
+    numpy.random.seed(0)
+    manual_seed(0)
+
+    # DEVICE HANDLING
+    if DEVICE is None:
+        DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    elif DEVICE == 'cuda' or DEVICE == 'cuda:0':
+        assert torch.cuda.is_available(), 'gpu requested but not available... switch device to cpu'
+        DEVICE = torch.device('cuda:0')
+    else:
+        DEVICE = torch.device('cpu')
+
+    print(DEVICE)
     print(OmegaConf.to_yaml(cfg))
 
     # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
@@ -50,7 +62,7 @@ def main(cfg: DictConfig):
     else:
         MODEL_DIR, RES_DIR = None, None
 
-    # GET TEST-VAL SPLIT 
+    # GET TRAIN-TEST-VAL SPLIT 
     task_colxn = load_in_task_collection(TRAIN_PATH,
                                          batch_size=BATCH_SIZE, 
                                          time_seq=TIME_SEQ_LEN, 
@@ -66,23 +78,27 @@ def main(cfg: DictConfig):
                                          time_seq=TIME_SEQ_LEN, 
                                          stride=STRIDE,
                                          scale=SCALE)
+    print("DATA LOAD-IN SUCCESSFUL\n")
 
+    # DEFINE MODELS 
+    assert MODEL in ['cnn','dnn','tcn'], 'model must be one of [cnn,dnn,tcn]'
+    if MODEL == 'dnn':
+        meta_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=279)
+        b1_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=279)
+        b2_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=279)
+    elif MODEL == 'cnn':
+        meta_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
+        b1_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
+        b2_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
+    else:
+        meta_model = TCN(8, 3*[26], TIME_SEQ_LEN, kernel_size=3)
+        b1_model = TCN(8, 3*[26], TIME_SEQ_LEN, kernel_size=3)
+        b2_model = TCN(8, 3*[26], TIME_SEQ_LEN, kernel_size=3)
 
-    # DEFINE MODEL + OPTIMIZER
-    # meta_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
-    meta_model = TCN(in_channels=8, layer_channels=3*[25], seq_len=TIME_SEQ_LEN)
-
+    # SPIN UP META OPTIMIZER
     meta_optimizer = optim.AdamW(meta_model.parameters(), lr=OUTER_LR)
 
-    # # RUN BASELINES ON TEST
-    # base1_logs = get_baseline1(BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN), test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=device) # blank aka self
-    # base2_logs = get_baseline2(BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN), train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=device, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
-    
-    base1_logs = get_baseline1(TCN(in_channels=8, layer_channels=3*[25], seq_len=TIME_SEQ_LEN), test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=device) # blank aka self
-    base2_logs = get_baseline2(TCN(in_channels=8, layer_channels=3*[25], seq_len=TIME_SEQ_LEN), train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=device, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
-
-
-    # # # # RUN MAML
+    # RUN MAML
     print("SETUP COMPLETE. BEGINNING MAML...")
     maml_logs = maml(meta_model, 
                      train_colxn,
@@ -94,8 +110,14 @@ def main(cfg: DictConfig):
                      INNER_LR, 
                      n_tasks=N_TRAIN_TASKS,
                      model_save_dir=MODEL_DIR,
-                     wandb=wandb_logger)
-    
+                     wandb=wandb_logger,
+                     device=DEVICE)
+
+    # RUN BASELINES
+    base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE) # blank aka self
+    base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
+
+    # GENERATE TEST RESULTS
     res_table, fig = process_logs(maml_logs, base1_logs, base2_logs)
 
     # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
@@ -107,9 +129,6 @@ def main(cfg: DictConfig):
 
     print(f"SUCCESSFULLY COMPLETED MAML RUN.")
     if wandb:
-        print(RES_DIR)
-        print(MODEL_DIR)
-        print(wandb.run.dir)
         shutil.copytree(RES_DIR, os.path.join(wandb.run.dir,'res'))
         shutil.copytree(MODEL_DIR, os.path.join(wandb.run.dir,'models'))
         wandb_logger.finish()

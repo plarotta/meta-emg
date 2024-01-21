@@ -22,14 +22,13 @@ warnings.filterwarnings("ignore", category=UserWarning, module="torch.autograd")
 def sample_tasks(task_distribution: list, 
                  n_tasks: int
                  ) -> EMGDataset:
-    # grab n_tasks number of samples from task_distribution
+    # sample n_tasks tasks from task_distribution
     out = np.take(task_distribution,
             indices=np.random.choice(
                 list(range(len(task_distribution))),
                 size=n_tasks,
                 replace = False))
     return(out)
-
 
 def _fine_tune_model(model: nn.Module, 
                     task: EMGTask, 
@@ -100,13 +99,12 @@ def maml(meta_model: nn.Module,
          n_tasks=3,
          model_save_dir=None,
          wandb=None,
-         test=True) -> dict:
+         test=True,
+         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")) -> dict:
     """
     Algorithm from https://arxiv.org/pdf/1703.03400v3.pdf (MAML for Few-Shot Supervised Learning)
     """
-    # Check if GPU is available
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    
+    # CREATE LOGGERS 
     logger = {'train':{},'val':{}, 'test':{}}
     for t in val_tasks:
         logger['val'][t.task_id] = [] 
@@ -230,11 +228,11 @@ def get_baseline1(blank_model: nn.Module,
     for task in test_tasks:
         logger['test'][task.task_id] = []
     
-    print('\nBASELINE 1: no meta training, no pre-training\n')
+    print('\nBEGINNING BASELINE 1: no meta training, no pre-training\n')
     [logger['test'][t.task_id].append(
             _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=1, device=device)) 
             for t in test_tasks]
-    print('\n')
+    print('BASELINE 1 COMPLETE...\n')
     return(logger)
 
 
@@ -250,6 +248,7 @@ def get_baseline2(blank_model: nn.Module,
                   scale=0,
                   batch_size=32):
     # generate big training dataset
+    print("BEGINNING BASELINE 2...\n")
     big_X = None
     big_Y = None
     for task in train_tasks:
@@ -272,13 +271,12 @@ def get_baseline2(blank_model: nn.Module,
     optimizer = optim.Adam(blank_model.parameters(), lr=1e-4)
 
     criterion = nn.CrossEntropyLoss()
-    print("Pre-training baseline 2")
+    
     for epoch in tqdm(range(50)):
         running_loss = 0.0
         correct = 0
         tot = 0
         for i, (x_batch, y_batch) in enumerate(trainloader):
-            # print(x_batch.shape)
             optimizer.zero_grad()
             preds = blank_model(x_batch.to(device))
             loss = criterion(preds, 
@@ -302,10 +300,10 @@ def get_baseline2(blank_model: nn.Module,
     for task in test_tasks:
         logger['test'][task.task_id] = []
 
-    print('\nBASELINE 2: no meta training, pre-trained on the entire train task collection\n')
     [logger['test'][t.task_id].append(
             _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=2,device=device)) 
             for t in test_tasks]
+    print('\nBASELINE 2 COMPLETE...\n')
     
     return(logger)
 

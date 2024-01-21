@@ -8,13 +8,16 @@ test:
     train_collection_json: 'data\task_collections\patient_tc_train.json'
     test_collection_json: 'data\task_collections\patient_tc_test.json'
     save: True
-    wandb: True
+    wandb: False
     fc_units: 32
     batch_size: 32
     time_seq_len: 30
     stride: 5
     run_name: 'trying out temp conv with more steps'
     scale: 1 # 2 for minmax, 1 for standardization
+    model: 'dnn'
+    seed: 0
+    device: 'cpu'
 
 
 
