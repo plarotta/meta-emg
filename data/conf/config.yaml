@@ -1,23 +1,23 @@
 test:
-    inner_lr: 1e-4 #0.004
+    inner_lr: 0.004 #1e-4 #0.004
     outer_lr: 5e-4 #5e-5
     meta_steps: 20
-    inner_steps: 5
-    n_val_tasks: 3
-    n_train_tasks: 1
+    inner_steps: 1
+    n_val_tasks: 5
+    n_train_tasks: 3
     train_collection_json: 'data\task_collections\patient_tc_train.json'
     test_collection_json: 'data\task_collections\patient_tc_test.json'
     save: True
-    wandb: False
+    wandb: True
     fc_units: 32
     batch_size: 32
     time_seq_len: 30
     stride: 5
-    run_name: 'trying out temp conv with more steps'
+    run_name: 'generic run'
     scale: 1 # 2 for minmax, 1 for standardization
-    model: 'dnn'
+    model: 'tcn'
     seed: 0
-    device: 'cpu'
+    device: 
 
 
 
