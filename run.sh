@@ -14,7 +14,7 @@
 
 # cd meta-emg/data && rm -rf collected_data
 
-# git clone https://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@github.com/hand-orthosis/collected_data.git
+# git clone https://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@github.com/hand-orthosis/collected_data.git
 
 # cd ../
 

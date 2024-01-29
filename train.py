@@ -41,8 +41,8 @@ def main(cfg: DictConfig):
     wandb_logger = wandb.init(name=f'{RUN_NAME}') if WANDB else None
     
     # SET SEEDS FOR REPRODUCIBILITY
-    numpy.random.seed(0)
-    manual_seed(0)
+    numpy.random.seed(SEED)
+    manual_seed(SEED)
 
     # DEVICE HANDLING
     if DEVICE is None:

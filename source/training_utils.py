@@ -126,12 +126,12 @@ def maml(meta_model: nn.Module,
                 if task.task_id not in logger['train']:
                     logger['train'][task.task_id] = []
                 task_training_log = _fine_tune_model(meta_model,
-                                                task,
-                                                inner_training_steps,
-                                                inner_lr,
-                                                device=device,
-                                                store_grads=True,
-                                                wandb=wandb)
+                                                     task,
+                                                     inner_training_steps,
+                                                     inner_lr,
+                                                     device=device,
+                                                     store_grads=True,
+                                                     wandb=wandb)
                 logger['train'][task.task_id].append(task_training_log)
             meta_optimizer.step()  # Line 10 in the pseudocode
 
@@ -215,7 +215,7 @@ def eval_trained_meta(model, test_tasks, inner_steps, inner_lr, wandb=None,devic
     [logger['test'][t.task_id].append(
             _fine_tune_model(model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, device=device)) 
             for t in test_tasks]
-    print('\n')
+    print('finished evaluating meta model...')
     return(logger)
 
 def get_baseline1(blank_model: nn.Module, 
