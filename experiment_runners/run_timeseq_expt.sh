@@ -1,5 +1,5 @@
 # seq_len titration across 2 scaling conditions, then comparing models of different sizes
-
+cd ../
 # std scaling
 # python train.py 'test.run_name=time_seq_std_25' 'test.meta_steps=20' 'test.scale=1' 'test.time_seq_len=25'
 python train.py 'test.run_name=time_seq_std_30' 'test.meta_steps=20' 'test.scale=1' 'test.time_seq_len=30' #model size 32

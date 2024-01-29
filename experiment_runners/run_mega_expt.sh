@@ -1,4 +1,4 @@
-
+cd ../
 # stride expt
 python train.py 'test.run_name=stride_expt_stride_25_cross_sess' 'test.stride=25' 'test.meta_steps=10'
 python train.py 'test.run_name=stride_expt_stride_20_cross_sess' 'test.stride=20' 'test.meta_steps=10'

@@ -1,5 +1,6 @@
 # window size titration, 3 models, std scaling, 1 and 3 inner steps
 
+cd ../
 ##cnn expts
 ### 50 
 #### 3 inner steps

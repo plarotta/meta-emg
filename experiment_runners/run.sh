@@ -53,6 +53,7 @@
 
 # python train.py 'test.run_name=terremoto_timeseq_90_std_dnn' 'test.inner_lr=1e-4' 'test.outer_lr=5e-4' 'test.meta_steps=30' 'test.inner_steps=3' 'test.n_val_tasks=5' 'test.n_train_tasks=1' 'test.save=True' 'test.wandb=True' 'test.time_seq_len=90' 'test.scale=1' 'test.model=dnn'
 
+cd ../
 
 ##minmax
 ### cnn

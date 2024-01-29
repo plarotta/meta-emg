@@ -1,4 +1,5 @@
 # fine tuning step experiment 
+cd ../
 
 #minmax
 ## 1 step
