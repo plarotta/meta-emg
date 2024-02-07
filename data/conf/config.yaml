@@ -1,5 +1,5 @@
 test:
-    inner_lr: 0.0001 #1e-4 #0.004
+    inner_lr: 1e-4 #1e-4 #0.004
     outer_lr: 5e-4 #5e-5
     meta_steps: 20
     inner_steps: 3
