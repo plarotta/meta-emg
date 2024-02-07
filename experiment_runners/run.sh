@@ -1,4 +1,3 @@
-# export WANDB_API_KEY=adf13475823af83082181ce3caf9b539bdf6bb5a
 
 # conda create --name memg-env python=3.10 pip -y
 
@@ -14,7 +13,6 @@
 
 # cd meta-emg/data && rm -rf collected_data
 
-# git clone https://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@github.com/hand-orthosis/collected_data.git
 
 # cd ../
 
