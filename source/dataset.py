@@ -97,8 +97,13 @@ class EMGDataset(Dataset):
             chunk_head+=self.stride
             chunk_tail+=self.stride 
             n+=1
-
-        y_holder = np.rint(np.mean(y_holder, axis=1))
+        # print(y_holder)
+        # print(y_holder.shape)
+        # print(np.rint(np.mean(y_holder, axis=1)).shape)
+        # print(y_holder[:,-1])
+        # input()
+        # y_holder = np.rint(np.mean(y_holder, axis=1))
+        y_holder = y_holder[:,-1]
 
         return(x_holder, y_holder)
     

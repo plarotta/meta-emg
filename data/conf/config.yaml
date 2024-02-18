@@ -1,6 +1,6 @@
 test:
     inner_lr: 1e-4 #1e-4 #0.004
-    outer_lr: 5e-4 #5e-5
+    outer_lr: 1e-3 #5e-5
     meta_steps: 20
     inner_steps: 3
     n_val_tasks: 3
@@ -12,10 +12,10 @@ test:
     fc_units: 32
     batch_size: 32
     time_seq_len: 50
-    stride: 5
-    run_name: 'generic run'
+    stride: 3
+    run_name: 'checking speedy maml'
     scale: 2 # 2 for minmax, 1 for standardization
-    model: 'dnn'
+    model: 'cnn'
     seed: 69
     device: 
 

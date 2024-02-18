@@ -72,7 +72,7 @@ def main(cfg: DictConfig):
         b1_model = TCN(8, 3*[26], TIME_SEQ_LEN, kernel_size=3)
         b2_model = TCN(8, 3*[26], TIME_SEQ_LEN, kernel_size=3)
 
-    meta_model.load_state_dict(torch.load('/Users/plarotta/Downloads/3step_final_model.pth'))
+    meta_model.load_state_dict(torch.load('/Users/plarotta/software/meta-emg/data/expt_outputs/2024-02-17/18-05-14/models/epoch_0014_loss_0.6338/model_state_dict.pth'))
     m_logs = eval_trained_meta(meta_model, test_clxn, INNER_STEPS, INNER_LR, device=DEVICE)
 
     # RUN BASELINES
