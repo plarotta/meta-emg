@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-from torch.nn.utils import weight_norm
+from torch.nn.utils.parametrizations import weight_norm
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -130,6 +130,29 @@ class TCN(nn.Module):
         x = self.relu(self.linear1(x))
         x = self.linear2(x)
         return(x)
+
+class TransformerNet(nn.Module):
+    def __init__(self, seq_len):
+        super(TransformerNet, self).__init__()
+        d_model = 8 # 8-dimensional EMG
+        self.net = nn.Sequential(
+            nn.TransformerEncoderLayer(d_model=d_model, nhead=4, batch_first=True, dropout=0.1, dim_feedforward=256),
+            # nn.TransformerEncoderLayer(d_model=d_model, nhead=4, batch_first=True, dropout=0.5, dim_feedforward=256),
+            # nn.TransformerEncoderLayer(d_model=d_model, nhead=4, batch_first=True, dropout=0.5, dim_feedforward=256),
+            nn.Flatten(),
+            nn.Linear(d_model * seq_len, 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(64, 32),
+            nn.ReLU(inplace=True),
+            # nn.Dropout(0.5),  # This makes results worse after I am doing proper standardization (a mean and std vector)
+            nn.Linear(32, 3),
+        )
+
+
+    def forward(self, x):
+        for layer in self.net:
+            x = layer(x.float())
+        return x
 
 
 if __name__ == '__main__':

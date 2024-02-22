@@ -1,4 +1,4 @@
-from source.models import BasicCNN, TCN, BasicDNN
+from source.models import BasicCNN, TCN, BasicDNN, TransformerNet
 import torch.optim as optim
 from source.training_utils import maml, load_in_task_collection, get_save_dirs, get_baseline1, get_baseline2, process_logs
 from sklearn.model_selection import train_test_split
@@ -81,19 +81,23 @@ def main(cfg: DictConfig):
     print("DATA LOAD-IN SUCCESSFUL\n")
 
     # DEFINE MODELS 
-    assert MODEL in ['cnn','dnn','tcn'], 'model must be one of [cnn,dnn,tcn]'
+    assert MODEL in ['cnn','dnn','tcn','tf'], 'model must be one of [cnn,dnn,tcn,tf]'
     if MODEL == 'dnn':
-        meta_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=279)
-        b1_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=279)
-        b2_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=279)
+        meta_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=256)
+        b1_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=256)
+        b2_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=256)
     elif MODEL == 'cnn':
         meta_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
         b1_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
         b2_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
+    elif MODEL == 'tcn':
+        meta_model = TCN(8, 3*[TIME_SEQ_LEN+1], TIME_SEQ_LEN, kernel_size=3)
+        b1_model = TCN(8, 3*[TIME_SEQ_LEN+1], TIME_SEQ_LEN, kernel_size=3)
+        b2_model = TCN(8, 3*[TIME_SEQ_LEN+1], TIME_SEQ_LEN, kernel_size=3)
     else:
-        meta_model = TCN(8, 3*[26], TIME_SEQ_LEN, kernel_size=3)
-        b1_model = TCN(8, 3*[26], TIME_SEQ_LEN, kernel_size=3)
-        b2_model = TCN(8, 3*[26], TIME_SEQ_LEN, kernel_size=3)
+        meta_model = TransformerNet(seq_len=TIME_SEQ_LEN)
+        b1_model = TransformerNet(seq_len=TIME_SEQ_LEN)
+        b2_model = TransformerNet(seq_len=TIME_SEQ_LEN)
 
     # SPIN UP META OPTIMIZER
     meta_optimizer = optim.AdamW(meta_model.parameters(), lr=OUTER_LR)

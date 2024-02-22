@@ -9,16 +9,12 @@ from source.dataset import EMGDataset
 from source.task import EMGTask
 import json
 import os
-import copy
 import warnings
 from torch.utils.data import DataLoader
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-import time
 
-# hide warning from loss.backward(retain_graph=True)
-warnings.filterwarnings("ignore", category=UserWarning, module="torch.autograd")
 
 def sample_tasks(task_distribution: list, 
                  n_tasks: int
@@ -40,21 +36,21 @@ def _fine_tune_model(model: nn.Module,
                     wandb=None,
                     baseline=None
                     ) -> dict:
+    '''Workhorse function for Meta-EMG'''
+    
     model = model.to(device)
-
     inner_optimizer = optim.Adam(model.parameters(), lr=inner_lr)
+
     # this wrapper is what allows us to store the inner loop gradients for the meta update
-    with higher.innerloop_ctx(model, inner_optimizer, copy_initial_weights=False, track_higher_grads=store_grads) as (fmodel, diffopt):
+    with higher.innerloop_ctx(model, 
+                              inner_optimizer, 
+                              copy_initial_weights=False, 
+                              track_higher_grads=store_grads) as (fmodel, diffopt):
         training_losses = []
 
         # fine tune meta on current task
-        # print(f'pre train loop: {list(model.parameters(recurse=True))[0][0][0]}')
-        # print(list(model.parameters(recurse=True))[0][0][0].grad)
-        # input()
-        
         for _ in range(inner_training_steps):
             running_loss = 0.0
-
             for i, (x_batch, y_batch) in enumerate(task.trainloader):
                 loss = F.cross_entropy(fmodel.forward(x_batch.to(device)), 
                                     y_batch.type(torch.LongTensor).to(device))
@@ -65,33 +61,21 @@ def _fine_tune_model(model: nn.Module,
             
             if wandb:
                 wandb.log({'meta/training/training_loss': running_loss})
-        # print(f'post train loop: {list(model.parameters(recurse=True))[0][0][0]}')
-        # print(list(model.parameters(recurse=True))[0][0][0].grad)
         
-        val_loss = 0.0
         correct = 0
         total_items = 0
         # get val loss for task, and send grad(theta_prime,theta) back 
         r_loss = 0.0
         for j, (x_batch, y_batch) in enumerate(task.testloader):
-                # start = time.time()
                 preds = fmodel.forward(x_batch.to(device))
                 r_loss += F.cross_entropy(preds, 
                                         y_batch.type(torch.LongTensor).to(device))
-                # loss.backward(create_graph=True,)
-                # loss.backward(retain_graph=True)
-                # print(f'{j} iter val loop: {list(model.parameters(recurse=True))[0][0][0]}')
-                # print(list(model.parameters(recurse=True))[0][0][0].grad)
-                # input()
-
-                val_loss += loss.item()
+                
                 correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch.to(device)).item()
                 total_items += len(y_batch)
-                # print(f'{j} iter time: {time.time()-start}')
-                # input()
         r_loss.backward()
 
-    val_loss = val_loss/(j+1)
+    val_loss = r_loss.item()/(j+1)
     val_accuracy = correct/total_items
     if wandb:
         if store_grads:
@@ -152,9 +136,7 @@ def maml(meta_model: nn.Module,
                                                      wandb=wandb)
                 logger['train'][task.task_id].append(task_training_log)
             meta_optimizer.step()  # Line 10 in the pseudocode
-            # print(f'post meta step: {list(meta_model.parameters(recurse=True))[0][0][0]}')
-            # print(list(meta_model.parameters(recurse=True))[0][0][0].grad)
-            # input()
+
 
         [logger['val'][t.task_id].append(
             _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
@@ -188,6 +170,10 @@ def maml(meta_model: nn.Module,
         [logger['test'][t.task_id].append(
             _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
             for t in test_tasks]
+        accs = []
+        for t in logger['test']:
+            accs.append(logger['test'][t][-1]['val_accuracy'])
+        print(f'MAML mean accuracy: {np.mean(accs)}')
     
     return logger
 

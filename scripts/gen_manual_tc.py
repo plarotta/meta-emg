@@ -1,7 +1,8 @@
 import json
 import re
 
-day1_patient_dict = ['2023_02_17_p1/p1_111.csv', 
+day1_patient_dict = [
+    '2023_02_17_p1/p1_111.csv', 
     '2023_02_17_p1/p1_121.csv',
     '2023_02_17_p1/p1_131.csv',
     '2023_02_17_p1/p1_141.csv',
