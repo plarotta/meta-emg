@@ -68,32 +68,33 @@ def main(cfg: DictConfig):
                                          time_seq=TIME_SEQ_LEN, 
                                          stride=STRIDE,
                                          scale=SCALE)
+    test_clxn = load_in_task_collection(TEST_PATH,
+                                        batch_size=BATCH_SIZE, 
+                                        time_seq=TIME_SEQ_LEN, 
+                                        stride=STRIDE,
+                                        scale=SCALE)
     if N_VAL_TASKS > 0:
         train_colxn, val_clxn = train_test_split(task_colxn, test_size=N_VAL_TASKS)
     else:
         train_colxn = task_colxn
-        val_clxn = task_colxn
-    test_clxn = load_in_task_collection(TEST_PATH,
-                                         batch_size=BATCH_SIZE, 
-                                         time_seq=TIME_SEQ_LEN, 
-                                         stride=STRIDE,
-                                         scale=SCALE)
+        val_clxn = test_clxn
+    
     print("DATA LOAD-IN SUCCESSFUL\n")
 
     # DEFINE MODELS 
     assert MODEL in ['cnn','dnn','tcn','tf'], 'model must be one of [cnn,dnn,tcn,tf]'
     if MODEL == 'dnn':
-        meta_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=256)
-        b1_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=256)
-        b2_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=256)
+        meta_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=256, dim2=128)
+        b1_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=256, dim2=128)
+        b2_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=256, dim2=128)
     elif MODEL == 'cnn':
         meta_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
         b1_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
         b2_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
     elif MODEL == 'tcn':
-        meta_model = TCN(8, 3*[TIME_SEQ_LEN+1], TIME_SEQ_LEN, kernel_size=3)
-        b1_model = TCN(8, 3*[TIME_SEQ_LEN+1], TIME_SEQ_LEN, kernel_size=3)
-        b2_model = TCN(8, 3*[TIME_SEQ_LEN+1], TIME_SEQ_LEN, kernel_size=3)
+        meta_model = TCN(8, 2*[TIME_SEQ_LEN+1], TIME_SEQ_LEN, kernel_size=3)
+        b1_model = TCN(8, 2*[TIME_SEQ_LEN+1], TIME_SEQ_LEN, kernel_size=3)
+        b2_model = TCN(8, 2*[TIME_SEQ_LEN+1], TIME_SEQ_LEN, kernel_size=3)
     else:
         meta_model = TransformerNet(seq_len=TIME_SEQ_LEN)
         b1_model = TransformerNet(seq_len=TIME_SEQ_LEN)

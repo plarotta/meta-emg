@@ -9,7 +9,6 @@ from source.dataset import EMGDataset
 from source.task import EMGTask
 import json
 import os
-import warnings
 from torch.utils.data import DataLoader
 import numpy as np
 import pandas as pd
@@ -222,6 +221,17 @@ def eval_trained_meta(model, test_tasks, inner_steps, inner_lr, wandb=None,devic
     [logger['test'][t.task_id].append(
             _fine_tune_model(model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, device=device)) 
             for t in test_tasks]
+    
+    meta_accs = []
+    meta_labs = []
+    for t in logger['test']:
+        meta_accs.append(logger['test'][t][-1]['val_accuracy'])
+        meta_labs.append(t)
+
+    print(meta_accs)
+    print(meta_labs)
+
+    
     print('finished evaluating meta model...')
     return(logger)
 
@@ -239,6 +249,10 @@ def get_baseline1(blank_model: nn.Module,
     [logger['test'][t.task_id].append(
             _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=1, device=device)) 
             for t in test_tasks]
+    accs = []
+    for t in logger['test']:
+        accs.append(logger['test'][t][-1]['val_accuracy'])
+    print(f'b1 mean accuracy: {np.mean(accs)}')
     print('BASELINE 1 COMPLETE...\n')
     return(logger)
 
@@ -279,7 +293,7 @@ def get_baseline2(blank_model: nn.Module,
 
     criterion = nn.CrossEntropyLoss()
     
-    for epoch in tqdm(range(50)):
+    for epoch in tqdm(range(30)):
         running_loss = 0.0
         correct = 0
         tot = 0
@@ -310,6 +324,10 @@ def get_baseline2(blank_model: nn.Module,
     [logger['test'][t.task_id].append(
             _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=2,device=device)) 
             for t in test_tasks]
+    accs = []
+    for t in logger['test']:
+        accs.append(logger['test'][t][-1]['val_accuracy'])
+    print(f'b2 mean accuracy: {np.mean(accs)}')
     print('\nBASELINE 2 COMPLETE...\n')
     
     return(logger)

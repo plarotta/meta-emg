@@ -60,9 +60,9 @@ def main(cfg: DictConfig):
     # DEFINE MODELS 
     assert MODEL in ['cnn','dnn','tcn'], 'model must be one of [cnn,dnn,tcn]'
     if MODEL == 'dnn':
-        meta_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=279)
-        b1_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=279)
-        b2_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=128, dim2=279)
+        meta_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=256, dim2=128)
+        b1_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=256, dim2=128)
+        b2_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=256, dim2=128)
     elif MODEL == 'cnn':
         meta_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
         b1_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
@@ -72,17 +72,17 @@ def main(cfg: DictConfig):
         b1_model = TCN(8, 3*[26], TIME_SEQ_LEN, kernel_size=3)
         b2_model = TCN(8, 3*[26], TIME_SEQ_LEN, kernel_size=3)
 
-    meta_model.load_state_dict(torch.load('/Users/plarotta/software/meta-emg/data/expt_outputs/2024-02-17/18-05-14/models/epoch_0014_loss_0.6338/model_state_dict.pth'))
+    meta_model.load_state_dict(torch.load(r'C:\Users\plarotta\software\meta-emg\data\expt_outputs\2024-02-22\20-04-45\models\epoch_0028_loss_0.6484\model_state_dict.pth'))
     m_logs = eval_trained_meta(meta_model, test_clxn, INNER_STEPS, INNER_LR, device=DEVICE)
 
-    # RUN BASELINES
-    base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE) # blank aka self
-    base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
+    # # RUN BASELINES
+    # base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE) # blank aka self
+    # base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
     
 
-    res_table, fig = process_logs(m_logs, base1_logs, base2_logs)
-    res_table.to_csv(os.path.join('/Users/plarotta/software/meta-emg/','res_table.csv'))
-    plt.show()
+    # res_table, fig = process_logs(m_logs, base1_logs, base2_logs)
+    # res_table.to_csv(os.path.join('/Users/plarotta/software/meta-emg/','res_table.csv'))
+    # plt.show()
 
 
 if __name__ == '__main__':
