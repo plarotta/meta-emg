@@ -31,7 +31,6 @@ def main():
     with open(ts_str, 'w') as json_file:
         json.dump(test, json_file)
 
-
     # do not include test dirs in the batch of dirs to sample from
     train_dirs = dirs.difference(test_dirs)
 
@@ -50,7 +49,6 @@ def main():
             tr_str = f'/Users/plarotta/software/meta-emg/data/task_collections/healthy/expt3/{n}sessions_rep{rep}_train.json'
             with open(tr_str, 'w') as json_file:
                 json.dump(train, json_file)
-
 
 if __name__ == '__main__':
     main()
