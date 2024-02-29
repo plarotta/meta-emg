@@ -1,6 +1,6 @@
 from source.models import BasicCNN, TCN, BasicDNN, TransformerNet
 import torch.optim as optim
-from source.training_utils import maml, load_in_task_collection, get_save_dirs, get_baseline1, get_baseline2, process_logs
+from source.training_utils import *
 from sklearn.model_selection import train_test_split
 import numpy.random
 from torch import manual_seed
@@ -105,40 +105,43 @@ def main(cfg: DictConfig):
 
     # RUN MAML
     print("SETUP COMPLETE. BEGINNING MAML...")
-    maml_logs = maml(meta_model, 
-                     train_colxn,
-                     val_clxn,
-                     test_clxn,
-                     meta_optimizer, 
-                     INNER_STEPS, 
-                     META_STEPS, 
-                     INNER_LR, 
-                     n_tasks=N_TRAIN_TASKS,
-                     model_save_dir=MODEL_DIR,
-                     wandb=wandb_logger,
-                     device=DEVICE)
+
+    res = b2_convergence_test(b2_model, r'C:\Users\plarotta\software\meta-emg\b2_model_state_dict.pth', test_clxn, INNER_LR)
+    print(res)
+    # maml_logs = maml(meta_model, 
+    #                  train_colxn,
+    #                  val_clxn,
+    #                  test_clxn,
+    #                  meta_optimizer, 
+    #                  INNER_STEPS, 
+    #                  META_STEPS, 
+    #                  INNER_LR, 
+    #                  n_tasks=N_TRAIN_TASKS,
+    #                  model_save_dir=MODEL_DIR,
+    #                  wandb=wandb_logger,
+    #                  device=DEVICE)
 
     # RUN BASELINES
-    base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE) # blank aka self
-    base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
+    # base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE) # blank aka self
+    # base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE, save_model=True) # pre training aka fine-tuned
 
-    # GENERATE TEST RESULTS
-    res_table, fig = process_logs(maml_logs, base1_logs, base2_logs)
+    # # GENERATE TEST RESULTS
+    # res_table, fig = process_logs(maml_logs, base1_logs, base2_logs)
 
-    # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
-    if OUT_ROOT:
-        with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
-            pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        res_table.to_csv(os.path.join(RES_DIR,'res_table.csv'))
-        fig.savefig(os.path.join(RES_DIR,'res_barplot.png'))
+    # # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
+    # if OUT_ROOT:
+    #     with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
+    #         pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    #     res_table.to_csv(os.path.join(RES_DIR,'res_table.csv'))
+    #     fig.savefig(os.path.join(RES_DIR,'res_barplot.png'))
 
-    print(f"SUCCESSFULLY COMPLETED MAML RUN.")
-    if wandb:
-        shutil.copytree(RES_DIR, os.path.join(wandb.run.dir,'res'))
-        shutil.copytree(MODEL_DIR, os.path.join(wandb.run.dir,'models'))
-        wandb_logger.finish()
+    # print(f"SUCCESSFULLY COMPLETED MAML RUN.")
+    # if wandb:
+    #     shutil.copytree(RES_DIR, os.path.join(wandb.run.dir,'res'))
+    #     shutil.copytree(MODEL_DIR, os.path.join(wandb.run.dir,'models'))
+    #     wandb_logger.finish()
         
-    return(maml_logs)
+    # return(maml_logs)
 
 if __name__ == '__main__':
     main()

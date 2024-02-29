@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+import time
 
 
 def sample_tasks(task_distribution: list, 
@@ -30,7 +31,7 @@ def _fine_tune_model(model: nn.Module,
                     task: EMGTask, 
                     inner_training_steps: int, 
                     inner_lr: float, 
-                    device='cpu', 
+                    device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"), 
                     store_grads=False,
                     wandb=None,
                     baseline=None
@@ -267,7 +268,8 @@ def get_baseline2(blank_model: nn.Module,
                   stride=1,
                   time_seq_len=25,
                   scale=0,
-                  batch_size=32):
+                  batch_size=32,
+                  save_model=False):
     # generate big training dataset
     print("BEGINNING BASELINE 2...\n")
     big_X = None
@@ -315,7 +317,8 @@ def get_baseline2(blank_model: nn.Module,
                 f'baseline2/pretraining_acc': accuracy,
                 f'baseline2/pretraining_epoch': epoch,
             })
-
+    if save_model==True:
+        torch.save(blank_model.state_dict(),'b2_model_state_dict.pth')
 
     logger = {'test':{}}
     for task in test_tasks:
@@ -331,6 +334,25 @@ def get_baseline2(blank_model: nn.Module,
     print('\nBASELINE 2 COMPLETE...\n')
     
     return(logger)
+
+def b2_convergence_test(model, path_to_trained_weights, test_tasks, lr=1e-4):
+    results = []
+    for inner_steps in [30,30,30,31,31,31]:
+        model.load_state_dict(torch.load(path_to_trained_weights))
+        logger = {'test':{}}
+        for task in test_tasks:
+            logger['test'][task.task_id] = []
+        start = time.time()
+        [logger['test'][t.task_id].append(
+                _fine_tune_model(model, t, inner_steps, lr, store_grads=False, baseline=2)) 
+                for t in test_tasks]
+        end = time.time()
+        accs = []
+        for t in logger['test']:
+            accs.append(logger['test'][t][-1]['val_accuracy'])
+        print(f'fine-tuning steps: {inner_steps} | mean acc: {np.mean(accs)} | avg task fine-tuning time: {(end-start)/len(test_tasks):.2f} s')
+        results.append((inner_steps, np.mean(accs), (end-start)/len(test_tasks) ))
+    return(results)
 
 def process_logs(meta_log, b1_log, b2_log):
 
