@@ -336,9 +336,9 @@ def get_baseline2(blank_model: nn.Module,
     
     return(logger)
 
-def b2_convergence_test(model, path_to_trained_weights, test_tasks, lr=1e-4):
+def model_convergence_test(model, path_to_trained_weights, test_tasks, lr=1e-4):
     results = []
-    for inner_steps in [30,30,30,31,31,31]:
+    for inner_steps in [1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,10,10,10,20,20,20,30,30,50,50,100,100,100,200,300]:
         model.load_state_dict(torch.load(path_to_trained_weights))
         logger = {'test':{}}
         for task in test_tasks:

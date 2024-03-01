@@ -17,7 +17,7 @@ class EMGDataset(Dataset):
                 rorcr_idx=-1,
                 train=True,
                 stride=1,
-                rorcr_sample_size=-1):
+                rorcr_sample_size=1):
         self.rorcr_idx = rorcr_idx
         self.train = train
         self.scale = scale
@@ -44,7 +44,7 @@ class EMGDataset(Dataset):
                      file_path: str,
                      condition: str,
                      rorcr_idx: str,
-                     rorcr_sample_size=-1
+                     rorcr_sample_size=1
                      ) -> list[np.array, np.array]:
 
         df = read_csv(str(file_path + '/' + file_path[-2:] +'_'+ condition + '.csv'))
@@ -64,7 +64,7 @@ class EMGDataset(Dataset):
 
     def sample_from_rorcr(self, x, y, sample_size=1):
         if sample_size >= 1:
-            print('FULL RORCR')
+            # print('FULL RORCR')
             return(x,y)
         else:
             # _,ax = plt.subplots(2)
@@ -140,7 +140,7 @@ class EMGDataset(Dataset):
     
 
 if __name__ == '__main__':
-    a = EMGDataset('/Users/plarotta/software/meta-emg/data/collected_data/2023_03_14_p4', '111', scale=2, rorcr_sample_size=.25, rorcr_idx=2745)
+    a = EMGDataset('/Users/plarotta/software/meta-emg/data/collected_data/2023_03_14_p4', '111', scale=2, rorcr_sample_size=1, rorcr_idx=2745)
 
 
 
