@@ -1,7 +1,7 @@
 test:
     inner_lr: 1e-4 #1e-4 #0.004
     outer_lr: 5e-4 #5e-5
-    meta_steps: 50
+    meta_steps: 3
     inner_steps: 3
     n_val_tasks: 0
     n_train_tasks: 1
@@ -18,6 +18,7 @@ test:
     model: 'dnn'
     seed: 0
     device: 
+    rorcr_size: .75
 
 
 

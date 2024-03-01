@@ -36,6 +36,7 @@ def main(cfg: DictConfig):
     SCALE = cfg.test.scale
     DEVICE = cfg.test.device
     MODEL = cfg.test.model.lower()
+    RORCR_SIZE = cfg.test.rorcr_size # 1 for full rorcr
 
     # SPIN UP WANDB RUN
     wandb_logger = wandb.init(name=f'{RUN_NAME}') if WANDB else None
@@ -67,12 +68,14 @@ def main(cfg: DictConfig):
                                          batch_size=BATCH_SIZE, 
                                          time_seq=TIME_SEQ_LEN, 
                                          stride=STRIDE,
-                                         scale=SCALE)
+                                         scale=SCALE,
+                                         rorcr_sample_size=RORCR_SIZE)
     test_clxn = load_in_task_collection(TEST_PATH,
                                         batch_size=BATCH_SIZE, 
                                         time_seq=TIME_SEQ_LEN, 
                                         stride=STRIDE,
-                                        scale=SCALE)
+                                        scale=SCALE,
+                                        rorcr_sample_size=RORCR_SIZE)
     if N_VAL_TASKS > 0:
         train_colxn, val_clxn = train_test_split(task_colxn, test_size=N_VAL_TASKS)
     else:
@@ -106,42 +109,42 @@ def main(cfg: DictConfig):
     # RUN MAML
     print("SETUP COMPLETE. BEGINNING MAML...")
 
-    res = b2_convergence_test(b2_model, r'C:\Users\plarotta\software\meta-emg\b2_model_state_dict.pth', test_clxn, INNER_LR)
-    print(res)
-    # maml_logs = maml(meta_model, 
-    #                  train_colxn,
-    #                  val_clxn,
-    #                  test_clxn,
-    #                  meta_optimizer, 
-    #                  INNER_STEPS, 
-    #                  META_STEPS, 
-    #                  INNER_LR, 
-    #                  n_tasks=N_TRAIN_TASKS,
-    #                  model_save_dir=MODEL_DIR,
-    #                  wandb=wandb_logger,
-    #                  device=DEVICE)
+    # res = b2_convergence_test(b2_model, r'C:\Users\plarotta\software\meta-emg\b2_model_state_dict.pth', test_clxn, INNER_LR)
+    # print(res)
+    maml_logs = maml(meta_model, 
+                     train_colxn,
+                     val_clxn,
+                     test_clxn,
+                     meta_optimizer, 
+                     INNER_STEPS, 
+                     META_STEPS, 
+                     INNER_LR, 
+                     n_tasks=N_TRAIN_TASKS,
+                     model_save_dir=MODEL_DIR,
+                     wandb=wandb_logger,
+                     device=DEVICE)
 
     # RUN BASELINES
-    # base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE) # blank aka self
-    # base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE, save_model=True) # pre training aka fine-tuned
+    base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE) # blank aka self
+    base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE, save_model=True) # pre training aka fine-tuned
 
     # # GENERATE TEST RESULTS
-    # res_table, fig = process_logs(maml_logs, base1_logs, base2_logs)
+    res_table, fig = process_logs(maml_logs, base1_logs, base2_logs)
 
     # # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
-    # if OUT_ROOT:
-    #     with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
-    #         pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    #     res_table.to_csv(os.path.join(RES_DIR,'res_table.csv'))
-    #     fig.savefig(os.path.join(RES_DIR,'res_barplot.png'))
+    if OUT_ROOT:
+        with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
+            pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        res_table.to_csv(os.path.join(RES_DIR,'res_table.csv'))
+        fig.savefig(os.path.join(RES_DIR,'res_barplot.png'))
 
-    # print(f"SUCCESSFULLY COMPLETED MAML RUN.")
-    # if wandb:
-    #     shutil.copytree(RES_DIR, os.path.join(wandb.run.dir,'res'))
-    #     shutil.copytree(MODEL_DIR, os.path.join(wandb.run.dir,'models'))
-    #     wandb_logger.finish()
+    print(f"SUCCESSFULLY COMPLETED MAML RUN.")
+    if wandb:
+        shutil.copytree(RES_DIR, os.path.join(wandb.run.dir,'res'))
+        shutil.copytree(MODEL_DIR, os.path.join(wandb.run.dir,'models'))
+        wandb_logger.finish()
         
-    # return(maml_logs)
+    return(maml_logs)
 
 if __name__ == '__main__':
     main()

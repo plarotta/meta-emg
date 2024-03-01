@@ -187,7 +187,7 @@ def _safe_json_load(filepath):
     except json.JSONDecodeError:
         print(f"Error decoding JSON in file {filepath}. No task collection loaded.")
 
-def load_in_task_collection(filepath, batch_size=32, time_seq=25, stride=1, scale=False):
+def load_in_task_collection(filepath, batch_size=32, time_seq=25, stride=1, scale=False, rorcr_sample_size=-1):
     # Load task collection from a JSON file
     tc_list = _safe_json_load(filepath)
     curr_wd = os.getcwd()
@@ -198,7 +198,8 @@ def load_in_task_collection(filepath, batch_size=32, time_seq=25, stride=1, scal
                 bsize=batch_size, 
                 time_series_len=time_seq, 
                 stride=stride,
-                scale=scale
+                scale=scale,
+                rorcr_size=rorcr_sample_size
                 ) 
         for d in tc_list if 'Augmen' not in d['session']]
 
