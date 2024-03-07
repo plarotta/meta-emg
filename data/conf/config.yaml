@@ -11,8 +11,8 @@ test:
     wandb: True
     fc_units: 32
     batch_size: 32
-    time_seq_len: 50
-    stride: 5
+    time_seq_len: 200
+    stride: 1
     run_name: 'testing baseline model save'
     scale: 2 # 2 for minmax, 1 for standardization
     model: 'dnn'
