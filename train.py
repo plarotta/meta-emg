@@ -128,6 +128,9 @@ def main(cfg: DictConfig):
                      lr_sched_cycle=LR_CYCLE,
                      lr_sched_gamma=LR_REDUCE_FACTOR)
 
+    if MODEL_DIR is not None:
+        shutil.copytree(MODEL_DIR, os.path.join(wandb.run.dir,'models'))
+
     # RUN BASELINES
     base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE, save_model=MODEL_DIR) # blank aka self
     base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE, save_model=MODEL_DIR) # pre training aka fine-tuned
@@ -145,7 +148,7 @@ def main(cfg: DictConfig):
     print(f"SUCCESSFULLY COMPLETED MAML RUN.")
     if wandb is True:
         shutil.copytree(RES_DIR, os.path.join(wandb.run.dir,'res'))
-        shutil.copytree(MODEL_DIR, os.path.join(wandb.run.dir,'models'))
+        
         wandb_logger.finish()
 
     if RUN_CONVERGENCE_TEST is True:
