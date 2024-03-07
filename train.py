@@ -62,7 +62,7 @@ def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))
 
     # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
-    if OUT_ROOT is True:
+    if OUT_ROOT is not None:
         MODEL_DIR, RES_DIR = get_save_dirs(OUT_ROOT)
     else:
         MODEL_DIR, RES_DIR = None, None
