@@ -10,7 +10,7 @@ class BasicDNN(nn.Module):
         super(BasicDNN, self).__init__()
         self.flatten = nn.Flatten()
         self.relu = nn.ReLU(inplace=True)
-        self.dropout = nn.Dropout(0.2)
+        # self.dropout = nn.Dropout(0.2)
         self.linear1 = nn.Linear(seq_len*8, dim1) # 8 channel emg input is flattened
         self.linear2 = nn.Linear(dim1, dim2)
         self.linear3 = nn.Linear(dim2, 3) # 3 class classification
@@ -20,7 +20,7 @@ class BasicDNN(nn.Module):
         x = torch.permute(x, (0,2,1)) # this doesnt actually matter since we are flattening the input anyway
         x = self.flatten(x)
         x = self.relu(self.linear1(x))
-        x = self.dropout(self.relu(self.linear2(x)))
+        x = self.relu(self.linear2(x))
         x = self.linear3(x)
         return(x)
 
@@ -68,7 +68,7 @@ class Chomp1d(nn.Module):
 
 class TemporalBlock(nn.Module):
     '''nabbed from https://github.com/locuslab/TCN/blob/master/TCN/tcn.py'''
-    def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, dropout=0.2):
+    def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, dropout=0.1):
         super(TemporalBlock, self).__init__()
         self.conv1 = weight_norm(nn.Conv1d(n_inputs, n_outputs, kernel_size,
                                            stride=stride, padding=padding, dilation=dilation))

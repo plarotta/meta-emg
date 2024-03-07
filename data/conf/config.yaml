@@ -1,7 +1,7 @@
 test:
     inner_lr: 1e-4 #1e-4 #0.004
     outer_lr: 5e-4 #5e-5
-    meta_steps: 20
+    meta_steps: 300
     inner_steps: 3
     n_val_tasks: 0
     n_train_tasks: 1
@@ -13,10 +13,10 @@ test:
     batch_size: 32
     time_seq_len: 200
     stride: 1
-    run_name: 'cross_sess 100% rorcr'
+    run_name: 'cross-sess big model no dropout'
     scale: 2 # 2 for minmax, 1 for standardization
     model: 'dnn'
-    seed: 0
+    seed: 69
     device: 
     rorcr_size: 1
 

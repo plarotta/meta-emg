@@ -1,6 +1,6 @@
 #!bin/bash
 
-python train.py 'test.run_name=cross-sess' 'test.train_collection_json=C:\\Users\\plarotta\\software\\meta-emg\\data\\task_collections\\patient_tc_train.json' 'test.test_collection_json=C:\\Users\\plarotta\\software\\meta-emg\\data\\task_collections\\patient_tc_test.json'
+# python train.py 'test.run_name=cross-sess' 'test.train_collection_json=C:\\Users\\plarotta\\software\\meta-emg\\data\\task_collections\\patient_tc_train.json' 'test.test_collection_json=C:\\Users\\plarotta\\software\\meta-emg\\data\\task_collections\\patient_tc_test.json'
 
 
 python train.py 'test.run_name=p4' 'test.train_collection_json=C:\\Users\\plarotta\\software\\meta-emg\\data\\task_collections\\cross_patient\\p4_train.json' 'test.test_collection_json=C:\\Users\\plarotta\\software\\meta-emg\\data\\task_collections\\cross_patient\\p4_test.json'

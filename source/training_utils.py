@@ -118,7 +118,7 @@ def maml(meta_model: nn.Module,
         return(batch)
     
     trainloader = DataLoader(training_tasks, batch_size=n_tasks, shuffle=True, collate_fn=coll_fn)
-    sched = optim.lr_scheduler.StepLR(meta_optimizer, 15, gamma=.75, verbose=True)
+    sched = optim.lr_scheduler.StepLR(meta_optimizer, 15, gamma=.9, verbose=True)
 
     for epoch in range(meta_training_steps):  # Line 2 in the pseudocode
         print(f'Meta epoch # {epoch}...')
@@ -270,7 +270,7 @@ def get_baseline2(blank_model: nn.Module,
                   time_seq_len=25,
                   scale=0,
                   batch_size=32,
-                  save_model=False):
+                  save_model=None):
     # generate big training dataset
     print("BEGINNING BASELINE 2...\n")
     big_X = None
@@ -318,8 +318,8 @@ def get_baseline2(blank_model: nn.Module,
                 f'baseline2/pretraining_acc': accuracy,
                 f'baseline2/pretraining_epoch': epoch,
             })
-    if save_model==True:
-        torch.save(blank_model.state_dict(),'b2_model_state_dict.pth')
+    if save_model is not None:
+        torch.save(blank_model.state_dict(),f'{save_model}_b2_model_state_dict.pth')
 
     logger = {'test':{}}
     for task in test_tasks:
@@ -338,7 +338,7 @@ def get_baseline2(blank_model: nn.Module,
 
 def model_convergence_test(model, path_to_trained_weights, test_tasks, lr=1e-4):
     results = []
-    for inner_steps in [1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,10,10,10,20,20,20,30,30,50,50,100,100,100,200,300]:
+    for inner_steps in [1,2,3,4,5,10,20,30,50,100,200,300]:
         model.load_state_dict(torch.load(path_to_trained_weights))
         logger = {'test':{}}
         for task in test_tasks:
@@ -349,10 +349,15 @@ def model_convergence_test(model, path_to_trained_weights, test_tasks, lr=1e-4):
                 for t in test_tasks]
         end = time.time()
         accs = []
+        labs = []
         for t in logger['test']:
             accs.append(logger['test'][t][-1]['val_accuracy'])
+            labs.append(t)
         print(f'fine-tuning steps: {inner_steps} | mean acc: {np.mean(accs)} | avg task fine-tuning time: {(end-start)/len(test_tasks):.2f} s')
         results.append((inner_steps, np.mean(accs), (end-start)/len(test_tasks) ))
+        r = pd.DataFrame([[*accs,np.mean(accs)]], columns=[*labs,'avg'],index=pd.Index(['Baseline 1: pre-trained model']))
+        print(r)
+        r.to_csv(os.path.join(f'{inner_steps}-step_res-table.csv'))
     return(results)
 
 def process_logs(meta_log, b1_log, b2_log):

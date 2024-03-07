@@ -87,9 +87,9 @@ def main(cfg: DictConfig):
     # DEFINE MODELS 
     assert MODEL in ['cnn','dnn','tcn','tf'], 'model must be one of [cnn,dnn,tcn,tf]'
     if MODEL == 'dnn':
-        meta_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=256, dim2=128)
-        b1_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=256, dim2=128)
-        b2_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=256, dim2=128)
+        meta_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=512, dim2=128)
+        b1_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=512, dim2=128)
+        b2_model = BasicDNN(seq_len=TIME_SEQ_LEN, dim1=512, dim2=128)
     elif MODEL == 'cnn':
         meta_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
         b1_model = BasicCNN(fc_dim=FC_UNITS, input_seq_len=TIME_SEQ_LEN)
@@ -109,31 +109,46 @@ def main(cfg: DictConfig):
     # RUN MAML
     print("SETUP COMPLETE. BEGINNING MAML...")
 
-    res = model_convergence_test(b1_model, r'C:\Users\plarotta\software\meta-emg\b1_model_state_dict.pth', test_clxn, INNER_LR)
-    print(res)
-    # maml_logs = maml(meta_model, 
-    #                  train_colxn,
-    #                  val_clxn,
-    #                  test_clxn,
-    #                  meta_optimizer, 
-    #                  INNER_STEPS, 
-    #                  META_STEPS, 
-    #                  INNER_LR, 
-    #                  n_tasks=N_TRAIN_TASKS,
-    #                  model_save_dir=MODEL_DIR,
-    #                  wandb=wandb_logger,
-    #                  device=DEVICE)
-    torch.save(meta_model.state_dict(),'b1_model_state_dict.pth')
+    # print('B1 CONVERGENCE')
+    # res = model_convergence_test(b1_model, 'cross-sess_b1_model_state_dict.pth', test_clxn, INNER_LR)
+    # print(res)
+
+    # print('B2 CONVERGENCE')
+    # res = model_convergence_test(b2_model, 'cross-sess_b2_model_state_dict.pth', test_clxn, INNER_LR)
+    # print(res)
+
+    # print('Meta-EMG CONVERGENCE')
+    # res = model_convergence_test(meta_model, 
+    #                              r'C:\Users\plarotta\software\meta-emg\data\expt_outputs\2024-03-06\16-53-25\models\epoch_0049_loss_0.6844\model_state_dict.pth', 
+    #                              test_clxn, 
+    #                              INNER_LR)
+    # print(res)
+
+    maml_logs = maml(meta_model, 
+                     train_colxn,
+                     val_clxn,
+                     test_clxn,
+                     meta_optimizer, 
+                     INNER_STEPS, 
+                     META_STEPS, 
+                     INNER_LR, 
+                     n_tasks=N_TRAIN_TASKS,
+                     model_save_dir=MODEL_DIR,
+                     wandb=wandb_logger,
+                     device=DEVICE)
+    
 
 
     # RUN BASELINES
-    # base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE) # blank aka self
-    # base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE, save_model=True) # pre training aka fine-tuned
+    base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE) # blank aka self
+    base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
+    # # torch.save(b1_model.state_dict(),'cross-sess_b1_model_state_dict.pth')
+    # # torch.save(b2_model.state_dict(),f'{RUN_NAME}_b1_model_state_dict.pth')
 
-    # # GENERATE TEST RESULTS
+    # # # # GENERATE TEST RESULTS
     res_table, fig = process_logs(maml_logs, base1_logs, base2_logs)
 
-    # # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
+    # # # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
     if OUT_ROOT:
         with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
             pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
