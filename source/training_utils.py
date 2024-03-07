@@ -90,6 +90,20 @@ def _fine_tune_model(model: nn.Module,
             })
     return {'training_losses': training_losses, 'val_loss': val_loss, 'val_accuracy': val_accuracy}
 
+
+def get_best_model(save_dir):
+    '''quick gpt function to get best model'''
+    files = os.listdir(save_dir)
+    best_loss = float('inf')  # Initialize with positive infinity
+    best_model = None
+    for file in files:
+        parts = file.split('_')
+        validation_loss = float(parts[-1])  # Extracting the loss value and removing the '.pth' extension
+        if validation_loss < best_loss:
+            best_loss = validation_loss
+            best_model = file
+    return os.path.join(save_dir, best_model, 'model_state_dict.pth') if best_model is not None else None
+
 def maml(meta_model: nn.Module, 
          training_tasks: list[EMGTask], 
          val_tasks: list[EMGTask],
@@ -102,7 +116,9 @@ def maml(meta_model: nn.Module,
          model_save_dir=None,
          wandb=None,
          test=True,
-         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")) -> dict:
+         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+         lr_sched_cycle=15,
+         lr_sched_gamma=0.9) -> dict:
     """
     Algorithm from https://arxiv.org/pdf/1703.03400v3.pdf (MAML for Few-Shot Supervised Learning)
     """
@@ -118,7 +134,7 @@ def maml(meta_model: nn.Module,
         return(batch)
     
     trainloader = DataLoader(training_tasks, batch_size=n_tasks, shuffle=True, collate_fn=coll_fn)
-    sched = optim.lr_scheduler.StepLR(meta_optimizer, 15, gamma=.9, verbose=True)
+    sched = optim.lr_scheduler.StepLR(meta_optimizer, lr_sched_cycle, gamma=lr_sched_gamma, verbose=True)
 
     for epoch in range(meta_training_steps):  # Line 2 in the pseudocode
         print(f'Meta epoch # {epoch}...')
@@ -138,6 +154,8 @@ def maml(meta_model: nn.Module,
             meta_optimizer.step()  # Line 10 in the pseudocode
 
 
+
+        # meta_model.load_state_dict(torch.load(get_best_model(dir)))
         [logger['val'][t.task_id].append(
             _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
             for t in val_tasks]
@@ -167,6 +185,8 @@ def maml(meta_model: nn.Module,
 
     # TODO: log these in wandb as well
     if test:
+        # load up best model from training
+        meta_model.load_state_dict(torch.load(get_best_model(model_save_dir)))
         [logger['test'][t.task_id].append(
             _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
             for t in test_tasks]
@@ -242,7 +262,13 @@ def get_baseline1(blank_model: nn.Module,
                   inner_steps: int, 
                   inner_lr: float, 
                   wandb=None, 
-                  device='cpu'):
+                  device='cpu',
+                  save_model=None):
+    
+    if save_model is not None:
+        torch.save(blank_model.state_dict(),
+                   os.path.join(save_model, 'b1_model_state_dict.pth'))
+        
     logger = {'test':{}}
     for task in test_tasks:
         logger['test'][task.task_id] = []
@@ -319,7 +345,8 @@ def get_baseline2(blank_model: nn.Module,
                 f'baseline2/pretraining_epoch': epoch,
             })
     if save_model is not None:
-        torch.save(blank_model.state_dict(),f'{save_model}_b2_model_state_dict.pth')
+        torch.save(blank_model.state_dict(),
+                   os.path.join(save_model, 'b2_model_state_dict.pth'))
 
     logger = {'test':{}}
     for task in test_tasks:
@@ -338,7 +365,7 @@ def get_baseline2(blank_model: nn.Module,
 
 def model_convergence_test(model, path_to_trained_weights, test_tasks, lr=1e-4):
     results = []
-    for inner_steps in [1,2,3,4,5,10,20,30,50,100,200,300]:
+    for inner_steps in [1,5,10,50,100]:
         model.load_state_dict(torch.load(path_to_trained_weights))
         logger = {'test':{}}
         for task in test_tasks:
@@ -425,9 +452,6 @@ def process_logs(meta_log, b1_log, b2_log):
 
     return(res_table, fig)
     
-
-
-
 
 
 

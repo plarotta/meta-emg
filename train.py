@@ -11,13 +11,14 @@ import os
 import wandb
 import torch
 import shutil
-
+import random
 
 @hydra.main(version_base=None, config_path="data/conf", config_name="config")
 def main(cfg: DictConfig):
 
     # PRINT OUT PARAMS & LOAD THEM
-    SEED = cfg.test.seed
+    SEED = random.randint(0,10000) if cfg.test.seed == 'r' else cfg.test.seed
+    print(f'ACTUAL SEED: {SEED}')
     INNER_LR = cfg.test.inner_lr
     OUTER_LR = cfg.test.outer_lr
     META_STEPS = cfg.test.meta_steps
@@ -37,6 +38,9 @@ def main(cfg: DictConfig):
     DEVICE = cfg.test.device
     MODEL = cfg.test.model.lower()
     RORCR_SIZE = cfg.test.rorcr_size # 1 for full rorcr
+    LR_CYCLE = cfg.test.lr_cycle
+    LR_REDUCE_FACTOR = cfg.test.lr_factor
+    RUN_CONVERGENCE_TEST = cfg.test.converge_baselines
 
     # SPIN UP WANDB RUN
     wandb_logger = wandb.init(name=f'{RUN_NAME}') if WANDB else None
@@ -58,7 +62,7 @@ def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))
 
     # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
-    if OUT_ROOT:
+    if OUT_ROOT is True:
         MODEL_DIR, RES_DIR = get_save_dirs(OUT_ROOT)
     else:
         MODEL_DIR, RES_DIR = None, None
@@ -109,21 +113,6 @@ def main(cfg: DictConfig):
     # RUN MAML
     print("SETUP COMPLETE. BEGINNING MAML...")
 
-    # print('B1 CONVERGENCE')
-    # res = model_convergence_test(b1_model, 'cross-sess_b1_model_state_dict.pth', test_clxn, INNER_LR)
-    # print(res)
-
-    # print('B2 CONVERGENCE')
-    # res = model_convergence_test(b2_model, 'cross-sess_b2_model_state_dict.pth', test_clxn, INNER_LR)
-    # print(res)
-
-    # print('Meta-EMG CONVERGENCE')
-    # res = model_convergence_test(meta_model, 
-    #                              r'C:\Users\plarotta\software\meta-emg\data\expt_outputs\2024-03-06\16-53-25\models\epoch_0049_loss_0.6844\model_state_dict.pth', 
-    #                              test_clxn, 
-    #                              INNER_LR)
-    # print(res)
-
     maml_logs = maml(meta_model, 
                      train_colxn,
                      val_clxn,
@@ -135,31 +124,36 @@ def main(cfg: DictConfig):
                      n_tasks=N_TRAIN_TASKS,
                      model_save_dir=MODEL_DIR,
                      wandb=wandb_logger,
-                     device=DEVICE)
-    
-
+                     device=DEVICE,
+                     lr_sched_cycle=LR_CYCLE,
+                     lr_sched_gamma=LR_REDUCE_FACTOR)
 
     # RUN BASELINES
-    base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE) # blank aka self
-    base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE) # pre training aka fine-tuned
-    # # torch.save(b1_model.state_dict(),'cross-sess_b1_model_state_dict.pth')
-    # # torch.save(b2_model.state_dict(),f'{RUN_NAME}_b1_model_state_dict.pth')
+    base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE, save_model=MODEL_DIR) # blank aka self
+    base2_logs = get_baseline2(b2_model, train_colxn, test_clxn, INNER_STEPS, INNER_LR,device=DEVICE, wandb=wandb_logger, batch_size=BATCH_SIZE, stride=STRIDE, time_seq_len=TIME_SEQ_LEN, scale=SCALE, save_model=MODEL_DIR) # pre training aka fine-tuned
 
     # # # # GENERATE TEST RESULTS
     res_table, fig = process_logs(maml_logs, base1_logs, base2_logs)
 
     # # # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
-    if OUT_ROOT:
+    if OUT_ROOT is True:
         with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
             pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
         res_table.to_csv(os.path.join(RES_DIR,'res_table.csv'))
         fig.savefig(os.path.join(RES_DIR,'res_barplot.png'))
 
     print(f"SUCCESSFULLY COMPLETED MAML RUN.")
-    if wandb:
+    if wandb is True:
         shutil.copytree(RES_DIR, os.path.join(wandb.run.dir,'res'))
         shutil.copytree(MODEL_DIR, os.path.join(wandb.run.dir,'models'))
         wandb_logger.finish()
+
+    if RUN_CONVERGENCE_TEST is True:
+        print('B1 CONVERGENCE')
+        res = model_convergence_test(b1_model, os.path.join(MODEL_DIR, 'b1_model_state_dict.pth'), test_clxn, INNER_LR)
+
+        print('B2 CONVERGENCE')
+        res = model_convergence_test(b2_model, os.path.join(MODEL_DIR, 'b2_model_state_dict.pth'), test_clxn, INNER_LR)
         
     return(maml_logs)
 
