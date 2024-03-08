@@ -34,7 +34,7 @@ def main(cfg: DictConfig):
     TIME_SEQ_LEN = cfg.test.time_seq_len
     STRIDE = cfg.test.stride
     RUN_NAME = cfg.test.run_name
-    SCALE = cfg.test.scale
+    SCALE = cfg.test.scale # 2 for minmax, 1 for std
     DEVICE = cfg.test.device
     MODEL = cfg.test.model.lower()
     RORCR_SIZE = cfg.test.rorcr_size # 1 for full rorcr
@@ -139,24 +139,31 @@ def main(cfg: DictConfig):
     res_table, fig = process_logs(maml_logs, base1_logs, base2_logs)
 
     # # # ONLY SAVE CHECKPOINTS IF AN OUTPUT DIRECTORY NAME IS GIVEN
-    if OUT_ROOT is True:
+    if OUT_ROOT is not None:
         with open(os.path.join(RES_DIR, 'maml_logger.pickle'), 'wb') as handle:
             pickle.dump(maml_logs, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        res_table.to_csv(os.path.join(RES_DIR,'res_table.csv'))
+        res_table.to_csv(os.path.join(RES_DIR,'full_result_table.csv'))
         fig.savefig(os.path.join(RES_DIR,'res_barplot.png'))
-
-    print(f"SUCCESSFULLY COMPLETED MAML RUN.")
-    if wandb is True:
-        shutil.copytree(RES_DIR, os.path.join(wandb.run.dir,'res'))
-        
-        wandb_logger.finish()
-
+    
     if RUN_CONVERGENCE_TEST is True:
         print('B1 CONVERGENCE')
-        res = model_convergence_test(b1_model, os.path.join(MODEL_DIR, 'b1_model_state_dict.pth'), test_clxn, INNER_LR)
+        res = model_convergence_test(b1_model, 
+                                     os.path.join(MODEL_DIR, 'b1_model_state_dict.pth'), 
+                                     test_clxn, 
+                                     lr=INNER_LR, 
+                                     save_dir=RES_DIR)
 
         print('B2 CONVERGENCE')
-        res = model_convergence_test(b2_model, os.path.join(MODEL_DIR, 'b2_model_state_dict.pth'), test_clxn, INNER_LR)
+        res = model_convergence_test(b2_model, 
+                                     os.path.join(MODEL_DIR, 'b2_model_state_dict.pth'), 
+                                     test_clxn, 
+                                     lr=INNER_LR, 
+                                     save_dir=RES_DIR)
+    
+    print(f"SUCCESSFULLY COMPLETED FULL EXPERIMENT.")
+    if WANDB is True:
+        shutil.copytree(RES_DIR, os.path.join(wandb.run.dir,'res'))
+        wandb_logger.finish()
         
     return(maml_logs)
 

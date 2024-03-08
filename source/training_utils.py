@@ -36,7 +36,8 @@ def _fine_tune_model(model: nn.Module,
                     wandb=None,
                     baseline=None
                     ) -> dict:
-    '''Workhorse function for Meta-EMG'''
+    '''Workhorse function for Meta-EMG. Fine-tunes models in a stateless manner
+    meaning that the model itself wont be modified'''
     
     model = model.to(device)
     inner_optimizer = optim.Adam(model.parameters(), lr=inner_lr)
@@ -186,14 +187,16 @@ def maml(meta_model: nn.Module,
     # TODO: log these in wandb as well
     if test:
         # load up best model from training
-        meta_model.load_state_dict(torch.load(get_best_model(model_save_dir)))
+        best_model = get_best_model(model_save_dir)
+        print(f'logging Meta-EMG results using {best_model}')
+        meta_model.load_state_dict(torch.load(best_model))
         [logger['test'][t.task_id].append(
             _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
             for t in test_tasks]
         accs = []
         for t in logger['test']:
             accs.append(logger['test'][t][-1]['val_accuracy'])
-        print(f'MAML mean accuracy: {np.mean(accs)}')
+        print(f'Meta-EMG mean test accuracy: {np.mean(accs)}')
     
     return logger
 
@@ -363,7 +366,7 @@ def get_baseline2(blank_model: nn.Module,
     
     return(logger)
 
-def model_convergence_test(model, path_to_trained_weights, test_tasks, lr=1e-4):
+def model_convergence_test(model, path_to_trained_weights, test_tasks, save_dir, lr=1e-4):
     results = []
     for inner_steps in [1,5,10,50,100]:
         model.load_state_dict(torch.load(path_to_trained_weights))
@@ -384,12 +387,12 @@ def model_convergence_test(model, path_to_trained_weights, test_tasks, lr=1e-4):
         results.append((inner_steps, np.mean(accs), (end-start)/len(test_tasks) ))
         r = pd.DataFrame([[*accs,np.mean(accs)]], columns=[*labs,'avg'],index=pd.Index(['Baseline 1: pre-trained model']))
         print(r)
-        r.to_csv(os.path.join(f'{inner_steps}-step_res-table.csv'))
+        r.to_csv(os.path.join(save_dir, f'{inner_steps}-step_res-table.csv'))
     return(results)
 
 def process_logs(meta_log, b1_log, b2_log):
 
-    # TODO: reduce these boys into a single for loop
+    # TODO: reduce these into a single loop
     meta_accs = []
     meta_labs = []
     for t in meta_log['test']:

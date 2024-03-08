@@ -1,7 +1,7 @@
 test:
     inner_lr: 1e-4 #1e-4 #0.004
     outer_lr: 5e-4 #5e-5
-    meta_steps: 50
+    meta_steps: 2
     inner_steps: 3
     n_val_tasks: 0
     n_train_tasks: 1
@@ -11,14 +11,14 @@ test:
     wandb: True
     fc_units: 32
     batch_size: 32
-    time_seq_len: 200
-    stride: 1
-    run_name: 'testing baseline model save'
+    time_seq_len: 30
+    stride: 4
+    run_name: 'fixing wandb pipeline'
     scale: 2 # 2 for minmax, 1 for standardization
     model: 'dnn'
     seed: 45
     device: 
-    rorcr_size: 1
+    rorcr_size: .5
     lr_cycle: 15
     lr_factor: 0.9
     converge_baselines: True
