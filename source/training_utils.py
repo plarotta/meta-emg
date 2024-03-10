@@ -60,7 +60,7 @@ def _fine_tune_model(model: nn.Module,
             running_loss = running_loss/(i+1)
             training_losses.append(running_loss)
             
-            if wandb:
+            if wandb is not None:
                 wandb.log({'meta/training/training_loss': running_loss})
         
         correct = 0
@@ -78,8 +78,8 @@ def _fine_tune_model(model: nn.Module,
 
     val_loss = r_loss.item()/(j+1)
     val_accuracy = correct/total_items
-    if wandb:
-        if store_grads:
+    if wandb is not None:
+        if store_grads is True:
             wandb.log({'meta/training/val_loss': val_loss,
                     'meta/training/val_acc': val_accuracy})
         elif baseline is not None:
@@ -366,7 +366,12 @@ def get_baseline2(blank_model: nn.Module,
     
     return(logger)
 
-def model_convergence_test(model, path_to_trained_weights, test_tasks, save_dir, lr=1e-4):
+def model_convergence_test(model: nn.Module, 
+                           path_to_trained_weights: str, 
+                           test_tasks: list[EMGTask], 
+                           save_dir: str, 
+                           name:str,
+                           lr=1e-4):
     results = []
     for inner_steps in [1,5,10,50,100]:
         model.load_state_dict(torch.load(path_to_trained_weights))
@@ -387,7 +392,7 @@ def model_convergence_test(model, path_to_trained_weights, test_tasks, save_dir,
         results.append((inner_steps, np.mean(accs), (end-start)/len(test_tasks) ))
         r = pd.DataFrame([[*accs,np.mean(accs)]], columns=[*labs,'avg'],index=pd.Index(['Baseline 1: pre-trained model']))
         print(r)
-        r.to_csv(os.path.join(save_dir, f'{inner_steps}-step_res-table.csv'))
+        r.to_csv(os.path.join(save_dir, f'{name}_{inner_steps}-step_res-table.csv'))
     return(results)
 
 def process_logs(meta_log, b1_log, b2_log):

@@ -151,14 +151,16 @@ def main(cfg: DictConfig):
                                      os.path.join(MODEL_DIR, 'b1_model_state_dict.pth'), 
                                      test_clxn, 
                                      lr=INNER_LR, 
-                                     save_dir=RES_DIR)
+                                     save_dir=RES_DIR,
+                                     name='b1')
 
         print('B2 CONVERGENCE')
         res = model_convergence_test(b2_model, 
                                      os.path.join(MODEL_DIR, 'b2_model_state_dict.pth'), 
                                      test_clxn, 
                                      lr=INNER_LR, 
-                                     save_dir=RES_DIR)
+                                     save_dir=RES_DIR,
+                                     name='b2')
     
     print(f"SUCCESSFULLY COMPLETED FULL EXPERIMENT.")
     if WANDB is True:
