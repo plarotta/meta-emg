@@ -111,8 +111,7 @@ def main(cfg: DictConfig):
     meta_optimizer = optim.AdamW(meta_model.parameters(), lr=OUTER_LR)
 
     # RUN MAML
-    print("SETUP COMPLETE. BEGINNING MAML...")
-
+    print("SETUP COMPLETE. BEGINNING MAML...\n")
     maml_logs = maml(meta_model, 
                      train_colxn,
                      val_clxn,
@@ -128,8 +127,7 @@ def main(cfg: DictConfig):
                      lr_sched_cycle=LR_CYCLE,
                      lr_sched_gamma=LR_REDUCE_FACTOR)
 
-    if MODEL_DIR is not None:
-        shutil.copytree(MODEL_DIR, os.path.join(wandb.run.dir,'models'))
+    print('\nSUCCESSFULLY FINISHED MAML...')
 
     # RUN BASELINES
     base1_logs = get_baseline1(b1_model, test_clxn, INNER_STEPS, INNER_LR, wandb_logger, device=DEVICE, save_model=MODEL_DIR) # blank aka self
@@ -164,6 +162,7 @@ def main(cfg: DictConfig):
     
     print(f"SUCCESSFULLY COMPLETED FULL EXPERIMENT.")
     if WANDB is True:
+        shutil.copytree(MODEL_DIR, os.path.join(wandb.run.dir,'models'))
         shutil.copytree(RES_DIR, os.path.join(wandb.run.dir,'res'))
         wandb_logger.finish()
         

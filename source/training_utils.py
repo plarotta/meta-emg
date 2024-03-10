@@ -70,7 +70,7 @@ def _fine_tune_model(model: nn.Module,
         for j, (x_batch, y_batch) in enumerate(task.testloader):
                 preds = fmodel.forward(x_batch.to(device))
                 r_loss += F.cross_entropy(preds, 
-                                        y_batch.type(torch.LongTensor).to(device))
+                                          y_batch.type(torch.LongTensor).to(device))
                 
                 correct += torch.sum(torch.argmax(F.softmax(preds,dim=1),dim=1) == y_batch.to(device)).item()
                 total_items += len(y_batch)
@@ -154,8 +154,6 @@ def maml(meta_model: nn.Module,
                 logger['train'][task.task_id].append(task_training_log)
             meta_optimizer.step()  # Line 10 in the pseudocode
 
-
-
         # meta_model.load_state_dict(torch.load(get_best_model(dir)))
         [logger['val'][t.task_id].append(
             _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
@@ -166,7 +164,7 @@ def maml(meta_model: nn.Module,
         avg_train_loss = np.mean([logger['train'][t.task_id][-1]['val_loss'] for t in training_tasks])
         avg_train_acc = np.mean([logger['train'][t.task_id][-1]['val_accuracy'] for t in training_tasks])
         
-        if wandb:
+        if wandb is not None:
             wandb.log({
                 'meta/validation/avg_val_loss': avg_val_loss,
                 'meta/validation/avg_val_acc': avg_val_acc,
@@ -175,7 +173,7 @@ def maml(meta_model: nn.Module,
                 'meta/training/avg_train_acc': avg_train_acc,
             })
         
-        if model_save_dir:
+        if model_save_dir is not None:
             model_folder_name = f'epoch_{epoch:04d}_loss_{avg_val_loss:.4f}'
             os.makedirs(os.path.join(model_save_dir, model_folder_name))
             torch.save(meta_model.state_dict(), 
@@ -184,22 +182,33 @@ def maml(meta_model: nn.Module,
         print(f'average val accuracy: {avg_val_acc}')
         sched.step()
 
-    # TODO: log these in wandb as well
-    if test:
-        # load up best model from training
+    if test is True:
         best_model = get_best_model(model_save_dir)
-        print(f'logging Meta-EMG results using {best_model}')
+        print(f'logging Meta-EMG results using \n{best_model}\n')
         meta_model.load_state_dict(torch.load(best_model))
-        [logger['test'][t.task_id].append(
-            _fine_tune_model(meta_model, t, inner_training_steps, inner_lr, store_grads=False)) 
-            for t in test_tasks]
-        accs = []
-        for t in logger['test']:
-            accs.append(logger['test'][t][-1]['val_accuracy'])
-        print(f'Meta-EMG mean test accuracy: {np.mean(accs)}')
+        mean_test_acc = get_test_results(meta_model, logger, test_tasks, inner_training_steps, inner_lr)
+        print(f'Meta-EMG mean test accuracy: {mean_test_acc}')
+        if wandb is not None:
+            wandb.log({'meta/test/avg_accuracy': mean_test_acc})
     
     return logger
 
+def get_test_results(model: nn.Module, 
+                     logger: dict, 
+                     test_tasks: list[EMGTask], 
+                     inner_steps, 
+                     inner_lr, 
+                     wandb=None, 
+                     baseline=None):
+    '''returns mean accuracy across test tasks'''
+    [logger['test'][t.task_id].append(
+        _fine_tune_model(model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=baseline)) 
+        for t in test_tasks]
+    accs = []
+    for t in logger['test']:
+        accs.append(logger['test'][t][-1]['val_accuracy'])
+    return(np.mean(accs))
+    
 def _safe_json_load(filepath):
     try:
         with open(filepath, 'r') as json_file:
@@ -277,16 +286,12 @@ def get_baseline1(blank_model: nn.Module,
         logger['test'][task.task_id] = []
     
     print('\nBEGINNING BASELINE 1: no meta training, no pre-training\n')
-    [logger['test'][t.task_id].append(
-            _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=1, device=device)) 
-            for t in test_tasks]
-    accs = []
-    for t in logger['test']:
-        accs.append(logger['test'][t][-1]['val_accuracy'])
-    print(f'b1 mean accuracy: {np.mean(accs)}')
+    mean_test_acc = get_test_results(blank_model, logger, test_tasks, inner_steps, inner_lr, baseline=1)
+    print(f'b1 mean accuracy: {mean_test_acc}')
     print('BASELINE 1 COMPLETE...\n')
+    if wandb is not None:
+            wandb.log({f'baseline1/test_accuracy': mean_test_acc})
     return(logger)
-
 
 def get_baseline2(blank_model: nn.Module, 
                   train_tasks: list[EMGTask], 
@@ -355,15 +360,11 @@ def get_baseline2(blank_model: nn.Module,
     for task in test_tasks:
         logger['test'][task.task_id] = []
 
-    [logger['test'][t.task_id].append(
-            _fine_tune_model(blank_model, t, inner_steps, inner_lr, store_grads=False, wandb=wandb, baseline=2,device=device)) 
-            for t in test_tasks]
-    accs = []
-    for t in logger['test']:
-        accs.append(logger['test'][t][-1]['val_accuracy'])
-    print(f'b2 mean accuracy: {np.mean(accs)}')
+    mean_test_acc = get_test_results(blank_model, logger, test_tasks, inner_steps, inner_lr, baseline=2)
+    print(f'b2 mean accuracy: {mean_test_acc}')
     print('\nBASELINE 2 COMPLETE...\n')
-    
+    if wandb is not None:
+            wandb.log({f'baseline2/test_accuracy': mean_test_acc})
     return(logger)
 
 def model_convergence_test(model: nn.Module, 
@@ -390,8 +391,7 @@ def model_convergence_test(model: nn.Module,
             labs.append(t)
         print(f'fine-tuning steps: {inner_steps} | mean acc: {np.mean(accs)} | avg task fine-tuning time: {(end-start)/len(test_tasks):.2f} s')
         results.append((inner_steps, np.mean(accs), (end-start)/len(test_tasks) ))
-        r = pd.DataFrame([[*accs,np.mean(accs)]], columns=[*labs,'avg'],index=pd.Index(['Baseline 1: pre-trained model']))
-        print(r)
+        r = pd.DataFrame([[*accs,np.mean(accs)]], columns=[*labs,'avg'],index=pd.Index([f'{name} model']))
         r.to_csv(os.path.join(save_dir, f'{name}_{inner_steps}-step_res-table.csv'))
     return(results)
 
