@@ -1,0 +1,27 @@
+# lots of runsssss
+
+# # n = 1
+python train.py 'test.run_name=v3_testp1_trainp3' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p3_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p1_test.json'
+python train.py 'test.run_name=v3_testp1_trainp4' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p4_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p1_test.json'
+python train.py 'test.run_name=v3_testp1_trainp7' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p7_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p1_test.json'
+python train.py 'test.run_name=v3_testp1_trainp8' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p8_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p1_test.json'
+
+python train.py 'test.run_name=v3_testp3_trainp1' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p1_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p3_test.json'
+python train.py 'test.run_name=v3_testp3_trainp4' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p4_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p3_test.json'
+python train.py 'test.run_name=v3_testp3_trainp7' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p7_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p3_test.json'
+python train.py 'test.run_name=v3_testp3_trainp8' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p8_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p3_test.json'
+
+python train.py 'test.run_name=v3_testp4_trainp1' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p1_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p4_test.json'
+python train.py 'test.run_name=v3_testp4_trainp3' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p3_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p4_test.json'
+python train.py 'test.run_name=v3_testp4_trainp7' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p7_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p4_test.json'
+python train.py 'test.run_name=v3_testp4_trainp8' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p8_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p4_test.json'
+
+python train.py 'test.run_name=v3_testp7_trainp1' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p1_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p7_test.json'
+python train.py 'test.run_name=v3_testp7_trainp3' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p3_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p7_test.json'
+python train.py 'test.run_name=v3_testp7_trainp4' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p4_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p7_test.json'
+python train.py 'test.run_name=v3_testp7_trainp8' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p8_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p7_test.json'
+
+python train.py 'test.run_name=v3_testp8_trainp1' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p1_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p8_test.json'
+python train.py 'test.run_name=v3_testp8_trainp3' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p3_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p8_test.json'
+python train.py 'test.run_name=v3_testp8_trainp4' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p4_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p8_test.json'
+python train.py 'test.run_name=v3_testp8_trainp7' 'test.train_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/one/p7_train.json' 'test.test_collection_json=/home/jxu/pedro/meta-emg/data/task_collections/num_patients_expt/test/p8_test.json'
