@@ -1,4 +1,4 @@
-# M-EMG [WIP]
+# M-EMG
 
 ## MyHand Orthosis
 
