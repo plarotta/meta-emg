@@ -1,4 +1,4 @@
-# M-EMG
+# MetaEMG
 
 ## MyHand Orthosis
 
