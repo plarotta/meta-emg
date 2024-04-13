@@ -36,20 +36,7 @@ To run the GUI to generate a new task collection,
 
 ## Running...
 
-To run MAML, you need a task collection and a config file defining the hyperparameters and the location of the task collection. We provide a sample config file config.yml and its contents are displayed and defined below:
+To run, create a conda (or mamba) environment with numpy, tqdm, wandb, hydra-core, and higher install and run the following from the root of this repo:
 
-    test:
-        inner_lr: 1e-4 (learning rate for the fine-tuning inner loop)
-        outer_lr: 1e-4 (learning rate for the meta-update outer loop)
-        meta_steps: 3 (number of meta updates to do)
-        inner_steps: 15 (number of epochs for fine-tuning)
-        n_val_tasks: 3 (number of hold-out tasks to use for meta-model validation)
-        n_train_tasks: 3 (number of tasks to sample and fine-tune on for each meta update)
-        task_collection_json: '/Users/plarotta/software/meta-emg/data/task_collections/pedro_ts1.json' (location of task collection)
-        save: True (whether to save intermediate models and the logger dictionary)
-
-    hydra:
-        run:
-            dir: data/expt_outputs/${now:%Y-%m-%d}/${now:%H-%M-%S} (it's recommended you keep this so that the models and the results dict are saved in the same place Hydra automatically places the config file used for the run)
-
+```python train.py```
 
