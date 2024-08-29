@@ -7,7 +7,18 @@ $^1$
 $^*$ Equal contribution, $^1$ Columbia University, $^2$ Columbia University Irving Medical Center
 
 [Arxiv](https://arxiv.org/abs/2403.13147)
- 
+
+<div style="margin:50px; text-align: justify;">
+<img style="width:100%;" src="metaemg_preview.png">   
+
+This repo captures the models, data processing, and training scripts used in our work
+applying meta learning to control a robotic hand orthosis using EMG signals. In this project
+we use build a framework using Model-Agnostic Meta Learning (MAML) to train intent classifiers
+for fast adaptation for use in a real robot. 
+
+</div>
+</div>
+
 ## MyHand Orthosis
 
  Exotendon device and EMG armband           |  Fully sensorized orthosis
