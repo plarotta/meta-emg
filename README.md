@@ -19,17 +19,6 @@ for fast adaptation for use in a real robot.
 </div>
 </div>
 
-## MyHand Orthosis
-
- Exotendon device and EMG armband           |  Fully sensorized orthosis
-:-------------------------:|:-------------------------:
-![image](https://github.com/plarotta/meta-emg/assets/20714356/f5ccd6c4-9db0-421d-aa9f-1665b4a1e7d5) | ![image](https://github.com/plarotta/meta-emg/assets/20714356/36014c4e-5c41-46ad-82d7-8971310af376) 
-[ref](https://arxiv.org/pdf/1911.08003.pdf) | [ref](https://arxiv.org/pdf/2011.00034.pdf)
-
-MyHand is a robotic orthosis designed to help with stroke rehabilitation. The actuators assist in opening and closing the user's hand via a series of linkages and actuators, and it is the intent of the user which ultimately drives the device. The intent is inferred from an EMG armband, and this process requires a model that takes in EMG as input and outputs an intent (open hand, close hand, relax hand) for the actuators. 
-
-Training said model is difficult because there is significant patient-patient variation, and even within a patient there is a large amount of concept drift resulting from fatigue. This repo documents my exploration into meta-learning as a more effective training paradigm for this specific application.
-
 ## Meta learning
 
 Meta-learning, or learning to learn, is a machine learning approach where models are trained to quickly adapt to new tasks with minimal data. It focuses on generalization across tasks by teaching models high-level skills or representations, enabling rapid learning and adaptation to new, unseen challenges. 
