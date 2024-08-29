@@ -1,5 +1,13 @@
-# MetaEMG
+<h1> Meta-Learning for Fast Adaptation in Intent Inferral on a Robotic Hand Orthosis for Stroke</h1>
+<div style="text-align: center;">
 
+[Pedro Leandro La Rotta](#)$^{* , 1}$, [Jingxi Xu](https://jxu.ai/)$^{* , 1}$, [Ava Chen](https://avachen.net/)$^1$, [Lauren Winterbottom](#)$^2$, [Wenxi Chen](#)$^1$, [Dawn M. Nilsen](#)$^2$, [Joel Stein](#)$^2$, [Matei Ciocarlie](https://roam.me.columbia.edu/people/matei-ciocarlie)
+$^1$
+
+$^*$ Equal contribution, $^1$ Columbia University, $^2$ Columbia University Irving Medical Center
+
+[Arxiv](https://arxiv.org/abs/2403.13147)
+ 
 ## MyHand Orthosis
 
  Exotendon device and EMG armband           |  Fully sensorized orthosis
